@@ -1,0 +1,15 @@
+BDR6/EasyService/Interface/MainWindow.java
+ BDR6.EasyService.Interface.MainWindow
+ BDR6.EasyService.Interface.MainWindow$1
+BDR6/EasyService/Applicative/ItemHandler.java
+ BDR6.EasyService.Applicative.ItemHandler
+BDR6/EasyService/Main.java
+ BDR6.EasyService.Main
+BDR6/EasyService/Datapackages/Base.java
+ BDR6.EasyService.Datapackages.Base
+BDR6/EasyService/DBConn/DBHandler.java
+ BDR6.EasyService.DBConn.DBHandler
+BDR6/EasyService/Data/QueryMaker.java
+ BDR6.EasyService.Data.QueryMaker
+BDR6/EasyService/Applicative/QueryHandler.java
+ BDR6.EasyService.Applicative.QueryHandler
