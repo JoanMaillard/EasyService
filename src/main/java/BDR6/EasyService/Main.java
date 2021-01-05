@@ -6,6 +6,8 @@
 
 package BDR6.EasyService;
 import BDR6.EasyService.Interface.MainWindow;
+import BDR6.EasyService.Applicative.ItemHandler;
+import BDR6.EasyService.Applicative.QueryHandler;
 
 /**
  *
@@ -16,9 +18,10 @@ public class Main {
     /**
      * @param args the command line arguments
      */
+    ItemHandler itemHandler = new ItemHandler();
     
     public static void main(String[] args) {
-        MainWindow mainWindow = new MainWindow();
+        MainWindow.main(args);
     }
     
 }

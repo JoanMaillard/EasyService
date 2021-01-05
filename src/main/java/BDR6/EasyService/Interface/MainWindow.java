@@ -30,6 +30,10 @@ public class MainWindow extends javax.swing.JFrame {
         jButton1 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setFont(new java.awt.Font("Alef", 0, 12)); // NOI18N
+        setForeground(java.awt.Color.gray);
+        setLocation(new java.awt.Point(0, 0));
+        setResizable(false);
 
         jButton1.setText("jButton1");
 
