@@ -11,4 +11,5 @@ package BDR6.EasyService.Data;
  */
 public class QueryMaker {
     
+    
 }
