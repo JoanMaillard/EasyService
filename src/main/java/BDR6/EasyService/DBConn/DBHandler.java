@@ -23,6 +23,9 @@ public abstract class DBHandler {
     private static String mysql_user;
     private static String mysql_password;
     
+    public static void initialize(){
+        //TODO
+    }
     
     private DBHandler(){}
     private static Connection dBConnection = null;
