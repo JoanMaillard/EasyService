@@ -5,7 +5,6 @@
  */
 
 package BDR6.EasyService;
-import BDR6.EasyService.Interface.MainWindow;
 import BDR6.EasyService.Applicative.ItemHandler;
 
 /**
@@ -20,7 +19,7 @@ public class Main {
     ItemHandler itemHandler = new ItemHandler();
     
     public static void main(String[] args) {
-        MainWindow.main(new String[0]);
+
     }
     
 }
