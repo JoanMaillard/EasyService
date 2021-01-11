@@ -87,5 +87,6 @@ public class QueryMaker {
         }
         return sb.toString();
     }
+    //yolo
     
 }
