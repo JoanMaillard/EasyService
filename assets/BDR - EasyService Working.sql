@@ -17,7 +17,7 @@ USE `EasyService` ;
 -- Table `EasyService`.`Staff`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `EasyService`.`Staff` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `nom` VARCHAR(45) NOT NULL,
   `prenom` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`id`),
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`Staff` (
 -- Table `EasyService`.`Service`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `EasyService`.`Service` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `debut` DATETIME NOT NULL,
   `fin` DATETIME NOT NULL,
   PRIMARY KEY (`id`),
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`Service` (
 -- Table `EasyService`.`Table`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `EasyService`.`Table` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `ouvertFerme` TINYINT NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC) VISIBLE);
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`Table` (
 -- Table `EasyService`.`Commande`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `EasyService`.`Commande` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `nombreCouverts` INT UNSIGNED NOT NULL,
   `idStaff` INT NOT NULL,
   `idService` INT NOT NULL,
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`Commande` (
 -- Table `EasyService`.`Categorie`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `EasyService`.`Categorie` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `nom` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE INDEX `nom_UNIQUE` (`nom` ASC) VISIBLE,
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`Categorie` (
 -- Table `EasyService`.`Produit`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `EasyService`.`Produit` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `nom` VARCHAR(45) NOT NULL,
   `prixVente` FLOAT NOT NULL,
   `idCategorie` INT NOT NULL,
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`Commande_Produit` (
 -- Table `EasyService`.`ArticleStock`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `EasyService`.`ArticleStock` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `nom` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE INDEX `nom_UNIQUE` (`nom` ASC) VISIBLE,
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`ArticleStock` (
 -- Table `EasyService`.`LotArticle`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `EasyService`.`LotArticle` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `datePeremption` DATE NOT NULL,
   `nombrePortions` INT NOT NULL,
   `prixAchat` FLOAT NOT NULL,
@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`LotArticle` (
 -- Table `EasyService`.`Log`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `EasyService`.`Log` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `date` DATETIME NOT NULL,
   PRIMARY KEY (`id`));
 
