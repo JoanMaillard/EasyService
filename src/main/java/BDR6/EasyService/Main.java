@@ -6,6 +6,8 @@
 
 package BDR6.EasyService;
 import BDR6.EasyService.Applicative.ItemHandler;
+import BDR6.EasyService.DBConn.DBHandler;
+import java.sql.SQLException;
 
 /**
  *
@@ -18,8 +20,9 @@ public class Main {
      */
     ItemHandler itemHandler = new ItemHandler();
     
-    public static void main(String[] args) {
-
+    public static void main(String[] args) throws SQLException {
+        DBHandler.initialize("root", "password");
+        DBHandler.getConnection();
     }
     
 }
