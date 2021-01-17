@@ -1,39 +1,40 @@
 
+-- test git
 -- -----------------------------------------------------
 -- Schema EasyService
 -- -----------------------------------------------------
 -- Projet BDR EasyService Groupe 6.
-DROP SCHEMA IF EXISTS `EasyService` ;
+DROP SCHEMA IF EXISTS EasyService ;
 
 -- -----------------------------------------------------
 -- Schema EasyService
 --
 -- Projet BDR EasyService Groupe 6.
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `EasyService` DEFAULT CHARACTER SET utf8mb4 ;
-USE `EasyService` ;
+CREATE SCHEMA IF NOT EXISTS EasyService DEFAULT CHARACTER SET utf8mb4 ;
+USE EasyService ;
 
 -- -----------------------------------------------------
 -- Table `EasyService`.`Staff`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `EasyService`.`Staff` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `nom` VARCHAR(45) NOT NULL,
-  `prenom` VARCHAR(45) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE INDEX `id_UNIQUE` (`id` ASC) VISIBLE);
+CREATE TABLE IF NOT EXISTS EasyService.Staff (
+  id INT NOT NULL AUTO_INCREMENT,
+  nom VARCHAR(45) NOT NULL,
+  prenom VARCHAR(45) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE INDEX id_UNIQUE (id ASC) VISIBLE);
 
 
 
 -- -----------------------------------------------------
 -- Table `EasyService`.`Service`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `EasyService`.`Service` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `debut` DATETIME NOT NULL,
-  `fin` DATETIME NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE INDEX `id_UNIQUE` (`id` ASC) VISIBLE);
+CREATE TABLE IF NOT EXISTS EasyService.Service (
+  id INT NOT NULL AUTO_INCREMENT,
+  debut DATETIME NOT NULL,
+  fin DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE INDEX id_UNIQUE (id ASC) VISIBLE);
 
 
 
@@ -51,13 +52,13 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`Table` (
 -- -----------------------------------------------------
 -- Table `EasyService`.`Commande`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `EasyService`.`Commande` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `nombreCouverts` INT UNSIGNED NOT NULL,
-  `idStaff` INT NOT NULL,
-  `idService` INT NOT NULL,
-  `idTable` INT NOT NULL,
-  PRIMARY KEY (`id`),
+CREATE TABLE IF NOT EXISTS EasyService.Commande (
+  id INT NOT NULL AUTO_INCREMENT,
+  nombreCouverts INT UNSIGNED NOT NULL,
+  idStaff INT NOT NULL,
+  idService INT NOT NULL,
+  idTable INT NOT NULL,
+  PRIMARY KEY (id),
   INDEX `FK_Commande_idStaff_idx` (`idStaff` ASC) VISIBLE,
   INDEX `FK_Commande_idService_idx` (`idService` ASC) VISIBLE,
   INDEX `FK_Commande_idTable_idx` (`idTable` ASC) VISIBLE,
@@ -82,23 +83,23 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`Commande` (
 -- -----------------------------------------------------
 -- Table `EasyService`.`Categorie`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `EasyService`.`Categorie` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `nom` VARCHAR(45) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE INDEX `nom_UNIQUE` (`nom` ASC) VISIBLE,
-  UNIQUE INDEX `id_UNIQUE` (`id` ASC) VISIBLE);
+CREATE TABLE IF NOT EXISTS EasyService.Categorie (
+  id INT NOT NULL AUTO_INCREMENT,
+  nom VARCHAR(45) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE INDEX nom_UNIQUE (nom ASC) VISIBLE,
+  UNIQUE INDEX id_UNIQUE (id ASC) VISIBLE);
 
 
 -- -----------------------------------------------------
 -- Table `EasyService`.`Produit`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `EasyService`.`Produit` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `nom` VARCHAR(45) NOT NULL,
-  `prixVente` FLOAT NOT NULL,
-  `idCategorie` INT NOT NULL,
-  PRIMARY KEY (`id`),
+CREATE TABLE IF NOT EXISTS EasyService.Produit (
+  id INT NOT NULL AUTO_INCREMENT,
+  nom VARCHAR(45) NOT NULL,
+  prixVente FLOAT NOT NULL,
+  idCategorie INT NOT NULL,
+  PRIMARY KEY (id),
   INDEX `fk_Produit_Categorie1_idx` (`idCategorie` ASC) VISIBLE,
   UNIQUE INDEX `nom_UNIQUE` (`nom` ASC) VISIBLE,
   UNIQUE INDEX `id_UNIQUE` (`id` ASC) VISIBLE,
@@ -113,16 +114,16 @@ CREATE TABLE IF NOT EXISTS `EasyService`.`Produit` (
 -- -----------------------------------------------------
 -- Table `EasyService`.`Commande_Produit`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `EasyService`.`Commande_Produit` (
-  `idCommande` INT NOT NULL,
-  `idProduit` INT NOT NULL,
-  `nbrDeProduit` INT UNSIGNED NOT NULL,
-  PRIMARY KEY (`idCommande`, `idProduit`),
-  INDEX `FK_Commande_Produit_idCommande_idx` (`idCommande` ASC) INVISIBLE,
-  INDEX `FK_Commande_Produit_idProduit_idx` (`idProduit` ASC) INVISIBLE,
-  CONSTRAINT `FK_Commande_Produit_idCommande`
-    FOREIGN KEY (`idCommande`)
-    REFERENCES `EasyService`.`Commande` (`id`)
+CREATE TABLE IF NOT EXISTS EasyService.Commande_Produit (
+  idCommande INT NOT NULL,
+  idProduit INT NOT NULL,
+  nbrDeProduit INT UNSIGNED NOT NULL,
+  PRIMARY KEY (idCommande, idProduit),
+  INDEX FK_Commande_Produit_idCommande_idx (idCommande ASC) INVISIBLE,
+  INDEX FK_Commande_Produit_idProduit_idx (idProduit ASC) INVISIBLE,
+  CONSTRAINT FK_Commande_Produit_idCommande
+    FOREIGN KEY (idCommande)
+    REFERENCES EasyService.Commande (id)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
   CONSTRAINT `FK_Commande_Produit_idProduit`
