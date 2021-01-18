@@ -257,13 +257,13 @@ BEGIN
 			SET ForLoopTracker = ForLoopTracker + 1;
             
 			SELECT 
-				NTH_VALUE(idProduit, ForLoopTracker) OVER (ORDER BY idProduit ASC), 
-				NTH_VALUE(nbrDeProduit, ForLoopTracker) OVER (ORDER BY idProduit ASC) 
+				NTH_VALUE(idProduit, ForLoopTracker) FROM FIRST OVER (ORDER BY idProduit ASC), 
+				NTH_VALUE(nbrDeProduit, ForLoopTracker) FROM FIRST OVER (ORDER BY idProduit ASC) 
 			INTO idProduitCourant, numProduitCourant
 			FROM Commande_Produit
 			WHERE idCommande = inIdCommande;
 			
-			CALL StockDeduireProduits(IdArticleCourant, NumArticleCourant);
+			CALL StockDeduireProduit(IdArticleCourant, NumArticleCourant, InsertedId);
             
             UNTIL ForLoopTracker >= MaximumLoopTracker
         END REPEAT;
@@ -274,11 +274,19 @@ DROP PROCEDURE IF EXISTS StockDeduireProduit;
 DELIMITER//
 CREATE PROCEDURE StockDeduireProduit (
 	IN inIdProduit INT UNSIGNED,
-    IN inNumProduit INT UNSIGNED)
+    IN inNumProduit INT UNSIGNED,
+    IN inIdEcritureStockLog INT UNSIGNED)
 BEGIN
 	
     DECLARE ForLoopCounter INT UNSIGNED DEFAULT 0;
+    DECLARE MaxForLoop INT UNSIGNED DEFAULT 0;
+    DECLARE CurrentBatchId INT UNSIGNED;
     DECLARE CurrentBatchDeductible INT UNSIGNED;
+    DECLARE CurrentArticleDeProduit INT UNSIGNED;
+    DECLARE CurrentArticleDeProduitNumRestant INT UNSIGNED;
+    DECLARE CurrentArticleDeProduitQtyPerUnit INT UNSIGNED;
+    
+    DECLARE SubForLoopCounter INT UNSIGNED DEFAULT 0;
     
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'atomicité de la transaction
     BEGIN
@@ -288,10 +296,64 @@ BEGIN
     
 	START TRANSACTION;
 	
+    SELECT COUNT(idArticleStock)
+    INTO MaxForLoop
+    FROM ArticleStock_Produit
+    WHERE idProduit = inIdProduit;
+    
     REPEAT
 		SET ForLoopCounter = ForLoopCounter + 1;
         
-		SELECT 
+        SELECT 
+			NTH_VALUE(idArticleStock, forLoopCounter) FROM FIRST OVER (ORDER BY idArticleStock),
+            NTH_VALUE(nombrePortions, forLoopCounter) FROM FIRST OVER (ORDER BY idArticleStock)
+		INTO CurrentArticleDeProduit, CurrentArticleDeProduitQtyPerUnit
+        FROM ArticleStock_Produit
+        WHERE idProduit = inIdProduit;
+        
+        SET CurrentArticleDeProduitNumRestant = inNumProduit * CurrentArticleDeProduitQtyPerUnit;
+        
+		REPEAT -- une fois qu'on a défini de quel élément du produit on parle et combien il en faut par unité
+        
+        SELECT  -- get current amount of oldest, least full batch of determined 
+			NTH_VALUE(id, 1) FROM FIRST OVER (
+				ORDER BY datePeremption ASC,
+                nombrePortion ASC),
+			NTH_VALUE(nombrePortion, 1) FROM FIRST OVER (
+				ORDER BY datePeremption ASC,
+                nombrePortion ASC)
+		INTO CurrentBatchId, CurrentBatchDeductible
+        FROM LotArticle
+        WHERE idArticle = CurrentArticleDeProduit
+			AND nombrePortions > 0;
+		
+        IF CurrentBatchDeductible < inNumProduit * CurrentArticleDeProduitQtyPerUnit
+			THEN -- if can't pull the whole quota from one batch
+				UPDATE LotArticle
+				SET nombrePortion = 0
+                WHERE id = CurrentBatchId;
+                
+                INSERT INTO EcritureStock_LotArticle (idEcritureStock_Log, idLotArticle, modifStockNum)
+                VALUES (inIdEcritureStockLog,  CurrentBatchId, CurrentBatchDeductible);
+                
+                SET CurrentArticleDeProduitNumRestant = CurrentArticleDeProduitNumRestant - CurrentBatchDeductible;
+			ELSE -- if you can
+				UPDATE LotArticle
+                SET nombrePortion = CurrentBatchDeductible - CurrentArticleDeProduitNumRestant
+                WHERE id = CurrentBatchId;
+                
+                INSERT INTO EcritureStock_LotArticle(idEcritureStock_Log, idLotArticle, modifStockNum)
+                VALUES (inIdEcritureStockLog, CurrentBatchId, CurrentArticleDeProduitNumRestant);
+                
+                SET CurrentArticleDeProduitNumRestant = 0;
+		END IF;
+        
+        
+        UNTIL CurrentArticleDeProduitNumRestant = 0
+		END REPEAT;
+        
+        UNTIL ForLoopCounter = MaxForLoop
+	END REPEAT;
     
     COMMIT;
 END //
