@@ -2,8 +2,9 @@ USE EasyService;
 DELIMITER //
 
 DROP PROCEDURE IF EXISTS SelectAllLotsParArticle;
--- DELIMITER //
-CREATE PROCEDURE SelectAllLotsParArticle (IN Article VARCHAR(45))
+DELIMITER //
+CREATE PROCEDURE SelectAllLotsParArticle (
+IN Article VARCHAR(45))
 BEGIN
 	SELECT lotarticle.id, nombrePortions
 	FROM lotarticle
@@ -12,7 +13,7 @@ BEGIN
 END // 
 
 DROP PROCEDURE IF EXISTS SelectAllTablesFermees;
--- DELIMITER //
+DELIMITER //
 CREATE PROCEDURE SelectAllTablesFermees ()
 BEGIN
 	SELECT id 
@@ -20,17 +21,7 @@ BEGIN
     WHERE ouvertFerme = FALSE;
 END //
 
-DROP PROCEDURE IF EXISTS toto;
--- DELIMITER //
-CREATE PROCEDURE toto (
-	IN idIdTable INT )
-BEGIN
-	UPDATE tablesalle
-	SET ouvertFerme = 1
-	WHERE id = inIdTable;
-END //
 
--- TODO: add trigger to open table if not opened already
 DROP PROCEDURE IF EXISTS AjouterCommande; DELIMITER //
 DELIMITER //
 CREATE PROCEDURE AjouterCommande (
@@ -39,20 +30,20 @@ CREATE PROCEDURE AjouterCommande (
 	IN inIdService INT UNSIGNED, 
 	IN inIdTable INT UNSIGNED )
 BEGIN
-	DECLARE Validze INT;
+	DECLARE Valide INT;
     
     SELECT ouvertFerme 
-    INTO Validze 
+    INTO Valide 
     FROM tablesalle 
-    WHERE id = idTable;
+    WHERE id = idTableSalle;
     
-	IF Validze > 0 THEN
+	IF Valide > 0 THEN
     
 		UPDATE tablesalle
-        SET ouvertFerme = 1
+        SET ouvertFerme = TRUE
         WHERE id = inIdTable;
         
-		INSERT INTO commande (nombreCouverts, idStaff, idService, idTable)
+		INSERT INTO commande (nombreCouverts, idStaff, idService, idTableSalle)
 		VALUES (inNumCouvert, inIdStaff, inIdService, inIdTable);
         
 	END IF;
@@ -61,7 +52,10 @@ END //
 -- TODO: add trigger to commande_produit to replace behavior with adding nbrProduits to current count if product already in command
 DROP PROCEDURE IF EXISTS AjouterProduitSurCommande;
 DELIMITER //
-CREATE PROCEDURE AjouterProduitSurCommande (inIdCommande INT UNSIGNED, inIdProduit INT UNSIGNED, inNbrProduits INT UNSIGNED)
+CREATE PROCEDURE AjouterProduitSurCommande (
+	IN inIdCommande INT UNSIGNED, 
+	IN inIdProduit INT UNSIGNED, 
+	IN inNbrProduits INT UNSIGNED)
 BEGIN
     INSERT INTO commande_produit (idCommande, idProduit, nbrDeProduit)
     VALUES (inIdCommande, inIdProduit, inNbrProduits);
@@ -69,7 +63,8 @@ END //
 
 DROP PROCEDURE IF EXISTS CreerAddition;
 DELIMITER //
-CREATE PROCEDURE CreerAddition (inIdCommande INT UNSIGNED) 
+CREATE PROCEDURE CreerAddition (
+	IN inIdCommande INT UNSIGNED) 
 BEGIN
 
 	DECLARE InsertedId INT UNSIGNED;
@@ -96,14 +91,25 @@ END //
 
 DROP PROCEDURE IF EXISTS PayerAddition;
 DELIMITER //
-CREATE PROCEDURE PayerAddition (inIdAddition INT UNSIGNED)
+CREATE PROCEDURE PayerAddition (
+	IN inIdAddition INT UNSIGNED)
 BEGIN
+	
+    DECLARE TableSalleId INT UNSIGNED;
+    SELECT idTableSalle
+    INTO TableSalleId
+    FROM Commande
+    WHERE idAddition = inIdAddition;
+	
 	UPDATE addition
     SET estPaye = TRUE
     WHERE idLog = inIdAddition;
     
     UPDATE tablesalle
     SET ouvertFerme = FALSE
-    WHERE 
+    WHERE id = TableSalleId;
 END //
-    
+
+DROP PROCEDURE IF EXISTS InsererDansStock;
+DELIMITER //
+CREATE PROCEDURE InsererDansStock(in
