@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS Commande_Produit (
 	idCommande INT UNSIGNED,
 	idProduit INT UNSIGNED,
 	nbrDeProduit INT UNSIGNED NOT NULL,
+    sortiDeCuisine INT UNSIGNED NOT NULL,
   
 	CONSTRAINT PK_Commande_Produit PRIMARY KEY (idCommande, idProduit)
 );
