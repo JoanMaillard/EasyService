@@ -112,4 +112,16 @@ END //
 
 DROP PROCEDURE IF EXISTS InsererDansStock;
 DELIMITER //
-CREATE PROCEDURE InsererDansStock(in
+CREATE PROCEDURE InsererDansStock(
+	IN ArticleId INT UNSIGNED,
+    IN ArticleNum INT UNSIGNED,
+    IN DatePeremption DATETIME,
+    IN PrixAchat FLOAT)
+BEGIN
+    
+    INSERT INTO LotArticle (idArticleStock, nombrePortions, datePeremption, prixAchat)
+    VALUES (ArticleId, ArticleNum, DatePeremption, PrixAchat)
+    
+END //
+    
+    

@@ -162,7 +162,6 @@ CREATE TABLE IF NOT EXISTS Addition (
 CREATE TABLE IF NOT EXISTS EcritureStock (
 	idLog INT UNSIGNED NOT NULL,
 	idCommande INT UNSIGNED NOT NULL,
-    modifStockNum INT NOT NULL,
   
 	CONSTRAINT PK_EcritureStock PRIMARY KEY (idLog)
 );
