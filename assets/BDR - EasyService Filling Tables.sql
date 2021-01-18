@@ -14,11 +14,17 @@ INSERT INTO Staff (nom, prenom, dateNaissance) VALUES ('Keller', 'Thomas', '1955
 
 -- Boisson
 INSERT INTO ArticleStock (nom) VALUES ('Coca');
-INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2020-12-01', 50, 2.50, 1);
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2022-12-01', 50, 3.50, 1);
 
 INSERT INTO ArticleStock (nom) VALUES ('biere');
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2022-12-01', 80, 4.20, 2);
+
 INSERT INTO ArticleStock (nom) VALUES ('Fanta');
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2022-12-01', 50, 3.50, 3);
+
 INSERT INTO ArticleStock (nom) VALUES ('Sprite');
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2022-12-01', 50, 3.50, 3);
+
 
 -- Légumes
 INSERT INTO ArticleStock (nom) VALUES ('Tomtate');
@@ -44,5 +50,12 @@ INSERT INTO ArticleStock (nom) VALUES ('Ravioli');
 INSERT INTO Service(debut, fin) VALUES ('05:30:00', '10:30:00');
 INSERT INTO Service(debut, fin) VALUES ('12:00:00', '14:30:00');
 INSERT INTO Service(debut, fin) VALUES ('18:45:00', '22:30:00');
+
+INSERT INTO TableSalle(ouvertFerme) VALUES (FALSE);
+INSERT INTO TableSalle(ouvertFerme) VALUES (FALSE);
+INSERT INTO TableSalle(ouvertFerme) VALUES (FALSE);
+INSERT INTO TableSalle(ouvertFerme) VALUES (FALSE);
+INSERT INTO TableSalle(ouvertFerme) VALUES (FALSE);
+INSERT INTO TableSalle(ouvertFerme) VALUES (FALSE);
 
 
