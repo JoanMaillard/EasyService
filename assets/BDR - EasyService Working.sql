@@ -184,10 +184,9 @@ CREATE TABLE IF NOT EXISTS ArticleStock_Produit (
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS EcritureStock_LotArticle (
 	idEcritureStock_Log INT UNSIGNED NOT NULL,
-	idEcritureStock_Commande INT UNSIGNED NOT NULL,
 	idLotArticle INT UNSIGNED NOT NULL,
   
-	CONSTRAINT PK_EcritureStock_LotArticle PRIMARY KEY (idEcritureStock_Log, idEcritureStock_Commande, idLotArticle)
+	CONSTRAINT PK_EcritureStock_LotArticle PRIMARY KEY (idEcritureStock_Log, idLotArticle)
 );
 
   
@@ -334,10 +333,10 @@ ALTER TABLE ArticleStock_Produit ADD CONSTRAINT FK_ArticleStock_Produit_idProdui
 -- Alteration table EcritureStocks_LotArticle
 -- ----------------------------------------------------- 
 CREATE INDEX IDX_FK_EcritureStock_LotArticle_idLotArticle ON EcritureStock_LotArticle (idLotArticle);
-CREATE INDEX IDX_FK_EcritureStock_LotArticle_idEcritureStock ON EcritureStock_LotArticle (idEcritureStock_Log, idEcritureStock_Commande);
+CREATE INDEX IDX_FK_EcritureStock_LotArticle_idEcritureStock ON EcritureStock_LotArticle (idEcritureStock_Log);
 
 ALTER TABLE EcritureStock_LotArticle ADD CONSTRAINT FK_EcritureStock_LotArticle_idEcritureStock
-    FOREIGN KEY (idEcritureStock_Log , idEcritureStock_Commande) REFERENCES EasyService.EcritureStock (idLog)
+    FOREIGN KEY (idEcritureStock_Log) REFERENCES EasyService.EcritureStock (idLog)
 		ON DELETE CASCADE
 		ON UPDATE CASCADE;
         
