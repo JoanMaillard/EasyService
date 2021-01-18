@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS Addition (
 CREATE TABLE IF NOT EXISTS EcritureStock (
 	idLog INT UNSIGNED NOT NULL,
 	idCommande INT UNSIGNED,
+    modifStockNum INT NOT NULL,
   
 	CONSTRAINT PK_EcritureStock PRIMARY KEY (idLog)
 );
@@ -185,6 +186,7 @@ CREATE TABLE IF NOT EXISTS ArticleStock_Produit (
 CREATE TABLE IF NOT EXISTS EcritureStock_LotArticle (
 	idEcritureStock_Log INT UNSIGNED NOT NULL,
 	idLotArticle INT UNSIGNED NOT NULL,
+    modifStockNum INT NOT NULL,
   
 	CONSTRAINT PK_EcritureStock_LotArticle PRIMARY KEY (idEcritureStock_Log, idLotArticle)
 );
