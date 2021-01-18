@@ -30,7 +30,7 @@ CREATE PROCEDURE CommandeAjouter (
 	IN inIdService INT UNSIGNED, 
 	IN inIdTable INT UNSIGNED )
 BEGIN
-	DECLARE Valide INT;
+	DECLARE Invalide TINYINT;
     
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'atomicité de la transaction
     BEGIN
@@ -40,11 +40,11 @@ BEGIN
     
 	START TRANSACTION;
 		SELECT ouvertFerme 
-		INTO Valide 
+		INTO Invalide 
 		FROM tablesalle 
-		WHERE id = idTableSalle;
+		WHERE id = inIdTable;
 		
-		IF Valide > 0 THEN
+		IF NOT Invalide THEN
 		
 			UPDATE TableSalle
 			SET ouvertFerme = TRUE
@@ -82,8 +82,8 @@ BEGIN
 				
 		IF OldNbrProduits IS NULL
 		THEN
-			INSERT INTO Commande_Produit (idCommande, idProduit, nbrDeProduit)
-			VALUES (inIdCommande, inIdProduit, inNbrProduits);
+			INSERT INTO Commande_Produit (idCommande, idProduit, nbrDeProduit, sortiDeCuisine)
+			VALUES (inIdCommande, inIdProduit, inNbrProduits, 0);
 		ELSE
 			UPDATE Commande_Produit
 			SET nbrDeProduit = oldNbrProduits + inNbrProduits
@@ -114,8 +114,8 @@ BEGIN
     START TRANSACTION;
 		SELECT 
 			CASE
-				WHEN inNbrProduit < nbrDeProduit THEN FALSE
-				WHEN inNbrProduit = nbrDeProduit THEN TRUE
+				WHEN inNbrDeProduit < nbrDeProduit THEN FALSE
+				WHEN inNbrDeProduit = nbrDeProduit THEN TRUE
 			END AS mustRemove
 		INTO MustRemoveAll
 		FROM Commande_Produit
@@ -128,7 +128,7 @@ BEGIN
 				WHERE idCommande = inIdCommande
 					AND idProduit = inIdProduit;
 			ELSE
-				SELECT (nbrDeProduit - inNbrProduit)
+				SELECT (nbrDeProduit - inNbrDeProduit)
 				INTO numProduitRestant
 				FROM Commande_Produit
 				WHERE idCommande = inIdCommande
@@ -254,16 +254,16 @@ BEGIN
         
         REPEAT
         
-			SET ForLoopTracker = ForLoopTracker + 1;
-            
-			SELECT 
-				NTH_VALUE(idProduit, ForLoopTracker) FROM FIRST OVER (ORDER BY idProduit ASC), 
-				NTH_VALUE(nbrDeProduit, ForLoopTracker) FROM FIRST OVER (ORDER BY idProduit ASC) 
+			SELECT idProduit, nbrDeProduit
 			INTO idProduitCourant, numProduitCourant
 			FROM Commande_Produit
-			WHERE idCommande = inIdCommande;
+			WHERE idCommande = inIdCommande
+            ORDER BY idProduit ASC
+            LIMIT 0, 1;
 			
-			CALL StockDeduireProduit(IdArticleCourant, NumArticleCourant, InsertedId);
+			CALL StockDeduireProduit(IdProduitCourant, NumProduitCourant, InsertedId);
+            
+            SET ForLoopTracker = ForLoopTracker + 1;
             
             UNTIL ForLoopTracker >= MaximumLoopTracker
         END REPEAT;
@@ -271,7 +271,7 @@ BEGIN
 END //
 
 DROP PROCEDURE IF EXISTS StockDeduireProduit;
-DELIMITER//
+DELIMITER //
 CREATE PROCEDURE StockDeduireProduit (
 	IN inIdProduit INT UNSIGNED,
     IN inNumProduit INT UNSIGNED,
@@ -286,7 +286,6 @@ BEGIN
     DECLARE CurrentArticleDeProduitNumRestant INT UNSIGNED;
     DECLARE CurrentArticleDeProduitQtyPerUnit INT UNSIGNED;
     
-    DECLARE SubForLoopCounter INT UNSIGNED DEFAULT 0;
     
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'atomicité de la transaction
     BEGIN
@@ -296,41 +295,38 @@ BEGIN
     
 	START TRANSACTION;
 	
-    SELECT COUNT(idArticleStock)
+    SELECT COUNT(idArticleStock) - 1
     INTO MaxForLoop
     FROM ArticleStock_Produit
     WHERE idProduit = inIdProduit;
     
     REPEAT
-		SET ForLoopCounter = ForLoopCounter + 1;
+		
         
-        SELECT 
-			NTH_VALUE(idArticleStock, forLoopCounter) FROM FIRST OVER (ORDER BY idArticleStock),
-            NTH_VALUE(nombrePortions, forLoopCounter) FROM FIRST OVER (ORDER BY idArticleStock)
+        SELECT idArticleStock, nombrePortions
 		INTO CurrentArticleDeProduit, CurrentArticleDeProduitQtyPerUnit
         FROM ArticleStock_Produit
-        WHERE idProduit = inIdProduit;
+        WHERE idProduit = inIdProduit
+        ORDER BY idArticleStock
+        LIMIT forLoopCounter, 1;
         
         SET CurrentArticleDeProduitNumRestant = inNumProduit * CurrentArticleDeProduitQtyPerUnit;
         
 		REPEAT -- une fois qu'on a défini de quel élément du produit on parle et combien il en faut par unité
         
-        SELECT  -- get current amount of oldest, least full batch of determined 
-			NTH_VALUE(id, 1) FROM FIRST OVER (
-				ORDER BY datePeremption ASC,
-                nombrePortion ASC),
-			NTH_VALUE(nombrePortion, 1) FROM FIRST OVER (
-				ORDER BY datePeremption ASC,
-                nombrePortion ASC)
+        SELECT id, nombrePortions -- get current amount of oldest, least full batch of determined 
 		INTO CurrentBatchId, CurrentBatchDeductible
         FROM LotArticle
-        WHERE idArticle = CurrentArticleDeProduit
-			AND nombrePortions > 0;
+        WHERE idArticleStock = CurrentArticleDeProduit
+			AND nombrePortions > 0
+		ORDER BY datePeremption ASC,
+                nombrePortions ASC
+		LIMIT 0, 1;
 		
         IF CurrentBatchDeductible < inNumProduit * CurrentArticleDeProduitQtyPerUnit
 			THEN -- if can't pull the whole quota from one batch
 				UPDATE LotArticle
-				SET nombrePortion = 0
+				SET nombrePortions = 0
                 WHERE id = CurrentBatchId;
                 
                 INSERT INTO EcritureStock_LotArticle (idEcritureStock_Log, idLotArticle, modifStockNum)
@@ -339,7 +335,7 @@ BEGIN
                 SET CurrentArticleDeProduitNumRestant = CurrentArticleDeProduitNumRestant - CurrentBatchDeductible;
 			ELSE -- if you can
 				UPDATE LotArticle
-                SET nombrePortion = CurrentBatchDeductible - CurrentArticleDeProduitNumRestant
+                SET nombrePortions = CurrentBatchDeductible - CurrentArticleDeProduitNumRestant
                 WHERE id = CurrentBatchId;
                 
                 INSERT INTO EcritureStock_LotArticle(idEcritureStock_Log, idLotArticle, modifStockNum)
@@ -351,6 +347,8 @@ BEGIN
         
         UNTIL CurrentArticleDeProduitNumRestant = 0
 		END REPEAT;
+        
+        SET ForLoopCounter = ForLoopCounter + 1;
         
         UNTIL ForLoopCounter = MaxForLoop
 	END REPEAT;
