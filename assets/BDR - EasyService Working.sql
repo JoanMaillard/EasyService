@@ -38,13 +38,13 @@ CREATE TABLE IF NOT EXISTS Service (
 
 
 -- -----------------------------------------------------
--- Table Table
+-- Table TableSalle
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS EasyService.Table (
+CREATE TABLE IF NOT EXISTS TableSalle (
 	id INT UNSIGNED AUTO_INCREMENT,
 	ouvertFerme TINYINT NOT NULL,
   
-	CONSTRAINT PK_Table PRIMARY KEY (id)
+	CONSTRAINT PK_TableSalle PRIMARY KEY (id)
 );
 
 
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS Commande (
 	nombreCouverts INT UNSIGNED NOT NULL,
 	idStaff INT UNSIGNED NOT NULL,
 	idService INT UNSIGNED NOT NULL,
-	idTable INT UNSIGNED NOT NULL,
+	idTableSalle INT UNSIGNED NOT NULL,
     idAddition INT UNSIGNED ,
   
 	CONSTRAINT PK_Commande PRIMARY KEY (id)
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS LotArticle (
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS Log (
 	id INT UNSIGNED AUTO_INCREMENT,
-	date DATETIME NOT NULL,
+	dateLog DATETIME NOT NULL,
     
 	CONSTRAINT PK_Log PRIMARY KEY (id)
 );
@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS EcritureStock_LotArticle (
 -- création d'index.
 CREATE INDEX IDX_FK_Commande_idStaff ON Commande (idStaff);
 CREATE INDEX IDX_FK_Commande_idService ON Commande (idService);
-CREATE INDEX IDX_FK_Commande_idTable ON Commande (idTable);
+CREATE INDEX IDX_FK_Commande_idTableSalle ON Commande (idTableSalle);
 CREATE INDEX IDX_FK_Commande_idAddition ON Commande(idAddition);
 
 -- créations de contraintes de clés étrangères.
@@ -219,8 +219,8 @@ ALTER TABLE Commande ADD CONSTRAINT FK_Commande_idService
 		ON DELETE CASCADE
 		ON UPDATE CASCADE;
         
-ALTER TABLE Commande ADD CONSTRAINT FK_Commande_idTable
-    FOREIGN KEY (idTable) REFERENCES EasyService.Table (id)
+ALTER TABLE Commande ADD CONSTRAINT FK_Commande_idTableSalle
+    FOREIGN KEY (idTableSalle) REFERENCES TableSalle (id)
 		ON DELETE CASCADE
 		ON UPDATE CASCADE;
 
