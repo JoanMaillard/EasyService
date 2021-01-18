@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS Log (
 CREATE TABLE IF NOT EXISTS HistoriqueStaff (
 	idLog INT UNSIGNED, -- NOT NULL retiré ici car PK et FK, je laisse ?
 	debut DATETIME NOT NULL,
-	fin DATETIME NOT NULL,
+	fin DATETIME,
 	idStaff INT UNSIGNED NOT NULL,
   
 	CONSTRAINT PK_HistoriqueStaff PRIMARY KEY (idLog)
