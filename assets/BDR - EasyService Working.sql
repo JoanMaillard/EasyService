@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS Service (
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS TableSalle (
 	id INT UNSIGNED AUTO_INCREMENT,
-	ouvertFerme TINYINT NOT NULL,
+	ouvert TINYINT NOT NULL,
   
 	CONSTRAINT PK_TableSalle PRIMARY KEY (id)
 );
