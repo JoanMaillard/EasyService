@@ -286,6 +286,11 @@ BEGIN
 		INSERT INTO EcritureStock (idLog, idCommande)
 		VALUES (InsertedId, inIdCommande);
         
+        SELECT COUNT(idProduit)
+        INTO MaximumLoopTracker
+        FROM Commande_Produit
+        WHERE idCommande = inIdCommande;
+        
         REPEAT
         
 			SELECT idProduit, nbrDeProduit
@@ -293,7 +298,7 @@ BEGIN
 			FROM Commande_Produit
 			WHERE idCommande = inIdCommande
             ORDER BY idProduit ASC
-            LIMIT 0, 1;
+            LIMIT ForLoopTracker, 1;
 			
 			CALL StockDeduireProduit(IdProduitCourant, NumProduitCourant, InsertedId);
             
@@ -348,35 +353,35 @@ BEGIN
         
 		REPEAT -- une fois qu'on a défini de quel élément du produit on parle et combien il en faut par unité
         
-        SELECT id, nombrePortions -- get current amount of oldest, least full batch of determined 
-		INTO CurrentBatchId, CurrentBatchDeductible
-        FROM LotArticle
-        WHERE idArticleStock = CurrentArticleDeProduit
-			AND nombrePortions > 0
-		ORDER BY datePeremption ASC,
-                nombrePortions ASC
-		LIMIT 0, 1;
-		
-        IF CurrentBatchDeductible < inNumProduit * CurrentArticleDeProduitQtyPerUnit
-			THEN -- if can't pull the whole quota from one batch
-				UPDATE LotArticle
-				SET nombrePortions = 0
-                WHERE id = CurrentBatchId;
-                
-                INSERT INTO EcritureStock_LotArticle (idEcritureStock_Log, idLotArticle, modifStockNum)
-                VALUES (inIdEcritureStockLog,  CurrentBatchId, CurrentBatchDeductible);
-                
-                SET CurrentArticleDeProduitNumRestant = CurrentArticleDeProduitNumRestant - CurrentBatchDeductible;
-			ELSE -- if you can
-				UPDATE LotArticle
-                SET nombrePortions = CurrentBatchDeductible - CurrentArticleDeProduitNumRestant
-                WHERE id = CurrentBatchId;
-                
-                INSERT INTO EcritureStock_LotArticle(idEcritureStock_Log, idLotArticle, modifStockNum)
-                VALUES (inIdEcritureStockLog, CurrentBatchId, CurrentArticleDeProduitNumRestant);
-                
-                SET CurrentArticleDeProduitNumRestant = 0;
-		END IF;
+			SELECT id, nombrePortions -- get current amount of oldest, least full batch of determined 
+			INTO CurrentBatchId, CurrentBatchDeductible
+			FROM LotArticle
+			WHERE idArticleStock = CurrentArticleDeProduit
+				AND nombrePortions > 0
+			ORDER BY datePeremption ASC,
+					nombrePortions ASC
+			LIMIT 0, 1;
+			
+			IF CurrentBatchDeductible < inNumProduit * CurrentArticleDeProduitQtyPerUnit
+				THEN -- if can't pull the whole quota from one batch
+					UPDATE LotArticle
+					SET nombrePortions = 0
+					WHERE id = CurrentBatchId;
+					
+					INSERT INTO EcritureStock_LotArticle (idEcritureStock_Log, idLotArticle, modifStockNum)
+					VALUES (inIdEcritureStockLog,  CurrentBatchId, CurrentBatchDeductible);
+					
+					SET CurrentArticleDeProduitNumRestant = CurrentArticleDeProduitNumRestant - CurrentBatchDeductible;
+				ELSE -- if you can
+					UPDATE LotArticle
+					SET nombrePortions = CurrentBatchDeductible - CurrentArticleDeProduitNumRestant
+					WHERE id = CurrentBatchId;
+					
+					INSERT INTO EcritureStock_LotArticle(idEcritureStock_Log, idLotArticle, modifStockNum)
+					VALUES (inIdEcritureStockLog, CurrentBatchId, CurrentArticleDeProduitNumRestant);
+					
+					SET CurrentArticleDeProduitNumRestant = 0;
+			END IF;
         
         
         UNTIL CurrentArticleDeProduitNumRestant = 0
@@ -415,13 +420,13 @@ BEGIN
 				WHERE idCommande = inIdCommande
 					AND idProduit = inIdProduit;
 					
-			IF OldNbrProduits IS NULL OR OldNbrProduits + inNbrProduits > NumProduitsCommandes
+			IF OldProduitsServis IS NULL OR OldProduitsServis + inNbrProduits > NumProduitsCommandes
 			THEN
 				INSERT INTO Commande_Produit (idCommande, idProduit, nbrDeProduit)
 				VALUES (inIdCommande, inIdProduit, inNbrProduits);
 			ELSE
 				UPDATE Commande_Produit
-				SET sortiDeCuisine = oldNbrProduits + inNbrProduits
+				SET sortiDeCuisine = OldProduitsServis + inNbrProduits
 				WHERE 
 					idCommande = inIdCommande
 					AND idProduit = inIdProduit;
@@ -529,7 +534,7 @@ BEGIN
     FROM Produit
     WHERE nom = inNomProduit;
 
-	INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, idNombrePortions)
+	INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions)
     VALUES (IdCalcArticle, IdCalcProduit, inNumPortions);
 
 END //
@@ -560,13 +565,13 @@ BEGIN
     
 END //
 
-DROP PROCEDURE IF EXISTS CategorieAjouter 
+DROP PROCEDURE IF EXISTS CategorieAjouter ;
 DELIMITER // 
 CREATE PROCEDURE CategorieAjouter (
 	IN inNomCategorie VARCHAR(45))
 BEGIN
 	INSERT INTO Categorie (nom)
-    VALUES (idNomCategorie);
+    VALUES (inNomCategorie);
 END //
 
 DROP PROCEDURE IF EXISTS StaffAjouter;
@@ -592,7 +597,7 @@ BEGIN
 
 END //
 
-DROP PROCEDURE IF EXISTS ServiceAjouter
+DROP PROCEDURE IF EXISTS ServiceAjouter;
 DELIMITER //
 CREATE PROCEDURE ServiceAjouter (
 	IN inServiceDebut TIME,
@@ -602,8 +607,8 @@ BEGIN
     IF NOT EXISTS (
 		SELECT id
         FROM Service
-        WHERE debut < inServiceDebut AND fin > inServiceDebut
-			OR debut > inServiceDebut AND debut < inServiceFin
+        WHERE debut <= inServiceDebut AND fin > inServiceDebut
+			OR debut >= inServiceDebut AND debut < inServiceFin
     ) AND inServiceDebut < inServiceFin THEN
 		INSERT INTO Service (debut, fin)
 		VALUES (inServiceDebut, inServiceFin);
@@ -611,7 +616,7 @@ BEGIN
     
 END //
 
-DROP PROCEDURE IF EXISTS ServiceModifier
+DROP PROCEDURE IF EXISTS ServiceModifier;
 DELIMITER //
 CREATE PROCEDURE ServiceModifier (
 	IN inIdService INT UNSIGNED,
@@ -622,8 +627,8 @@ BEGIN
     IF NOT EXISTS (
 		SELECT id
         FROM Service
-        WHERE (debut < inNouveauDebut AND fin > inNouveauDebut
-			OR debut > inNouvauDebut AND debut < inNouveauFin)
+        WHERE (debut <= inNouveauDebut AND fin > inNouveauDebut
+			OR debut >= inNouvauDebut AND debut < inNouveauFin)
             AND id != idIdService
 		) AND inNouveauDebut < inNouveauFin THEN
 			UPDATE Service
