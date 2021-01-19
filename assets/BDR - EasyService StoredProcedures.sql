@@ -1,7 +1,7 @@
 USE EasyService;
 DELIMITER //
 
-DROP PROCEDURE IF EXISTS SelectAllLotsParArticle;
+/* DROP PROCEDURE IF EXISTS SelectAllLotsParArticle;
 DELIMITER //
 CREATE PROCEDURE SelectAllLotsParArticle (
 IN inArticle VARCHAR(45))
@@ -19,7 +19,7 @@ BEGIN
 	SELECT id 
     FROM TableSalle 
     WHERE ouvertFerme = FALSE;
-END //
+END // */
 
 
 DROP PROCEDURE IF EXISTS CommandeAjouter;
@@ -480,6 +480,157 @@ BEGIN
 		SET fin = NOW()
 		WHERE idLog = IdToClose;
 	COMMIT;    
+END //
+
+DROP PROCEDURE IF EXISTS ProduitAjouter;
+DELIMITER // 
+CREATE PROCEDURE ProduitAjouter (
+	IN inNomProduit VARCHAR(45),
+    IN inPrixVente FLOAT,
+    IN inIdCategorie INT UNSIGNED)
+BEGIN
+	INSERT INTO Produit (nom, prixVente, idCategorie)
+    VALUES (inNomProduit, inPrixVente, inIdCategorie);
+END //
+
+DROP PROCEDURE IF EXISTS ProduitModifier;
+DELIMITER //
+CREATE PROCEDURE ProduitModifier (
+	IN inNom VARCHAR(45),
+    IN inNouveauNom VARCHAR(45),
+    IN inNouveauPrix FLOAT,
+    IN inIdCategorie INT UNSIGNED)
+BEGIN
+	UPDATE Produit
+    SET nom = inNouveauNom, 
+		prixVente = inNouveauPrix, 
+		idCategorie = inIdCategorie
+    WHERE nom = inNom;
+END //
+
+DROP PROCEDURE IF EXISTS ProduitAjouterArticle;
+DELIMITER //
+CREATE PROCEDURE ProduitAjouterArticle (
+	IN inNomProduit VARCHAR(45),
+    IN inNomArticle VARCHAR(45),
+    IN inNumPortions INT UNSIGNED)
+BEGIN
+
+	DECLARE IdCalcArticle INT UNSIGNED;
+    DECLARE IdCalcProduit INT UNSIGNED;
+    
+    SELECT id
+    INTO IdCalcArticle
+    FROM ArticleStock
+    WHERE nom = inNomArticle;
+    
+    SELECT id
+    INTO IdCalcProduit
+    FROM Produit
+    WHERE nom = inNomProduit;
+
+	INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, idNombrePortions)
+    VALUES (IdCalcArticle, IdCalcProduit, inNumPortions);
+
+END //
+
+DROP PROCEDURE IF EXISTS ProduitRetirerArticle;
+DELIMITER //
+CREATE PROCEDURE ProduitRetirerArticle (
+	IN inNomProduit VARCHAR(45),
+    IN inNomArticle VARCHAR(45))
+BEGIN
+	
+    DECLARE IdCalcArticle INT UNSIGNED;
+    DECLARE IdCalcProduit INT UNSIGNED;
+    
+    SELECT id
+    INTO IdCalcArticle
+    FROM ArticleStock
+    WHERE nom = inNomArticle;
+    
+    SELECT id
+    INTO IdCalcProduit
+    FROM Produit
+    WHERE nom = inNomProduit;
+    
+    DELETE FROM ArticleStock_Produit
+    WHERE idArticleStock = IdCalcArticle
+		AND idProduit = IdCalcProduit;
+    
+END //
+
+DROP PROCEDURE IF EXISTS CategorieAjouter 
+DELIMITER // 
+CREATE PROCEDURE CategorieAjouter (
+	IN inNomCategorie VARCHAR(45))
+BEGIN
+	INSERT INTO Categorie (nom)
+    VALUES (idNomCategorie);
+END //
+
+DROP PROCEDURE IF EXISTS StaffAjouter;
+DELIMITER //
+CREATE PROCEDURE StaffAjouter (
+	IN inNom VARCHAR(45),
+    IN inPrenom VARCHAR(45),
+    IN inDateNaissance DATE)
+BEGIN
+	
+	INSERT INTO Staff (nom, prenom, dateNaissance)
+    VALUES (inNom, inPrenom, inDateNaissance);
+    
+END //
+
+DROP PROCEDURE IF EXISTS TableAjouter;
+DELIMITER //
+CREATE PROCEDURE TableAjouter ()
+BEGIN
+
+	INSERT INTO TableSalle (ouvertFerme)
+    VALUES (FALSE);
+
+END //
+
+DROP PROCEDURE IF EXISTS ServiceAjouter
+DELIMITER //
+CREATE PROCEDURE ServiceAjouter (
+	IN inServiceDebut TIME,
+    IN inServiceFin TIME)
+BEGIN
+	
+    IF NOT EXISTS (
+		SELECT id
+        FROM Service
+        WHERE debut < inServiceDebut AND fin > inServiceDebut
+			OR debut > inServiceDebut AND debut < inServiceFin
+    ) AND inServiceDebut < inServiceFin THEN
+		INSERT INTO Service (debut, fin)
+		VALUES (inServiceDebut, inServiceFin);
+	END IF;
+    
+END //
+
+DROP PROCEDURE IF EXISTS ServiceModifier
+DELIMITER //
+CREATE PROCEDURE ServiceModifier (
+	IN inIdService INT UNSIGNED,
+	IN inNouveauDebut TIME,
+    IN inNouveauFin TIME)
+BEGIN
+	
+    IF NOT EXISTS (
+		SELECT id
+        FROM Service
+        WHERE (debut < inNouveauDebut AND fin > inNouveauDebut
+			OR debut > inNouvauDebut AND debut < inNouveauFin)
+            AND id != idIdService
+		) AND inNouveauDebut < inNouveauFin THEN
+			UPDATE Service
+            SET debut = inNouveauDebut, fin = inNouveauFin
+            WHERE id = inIdService;
+	END IF;
+
 END //
 
 
