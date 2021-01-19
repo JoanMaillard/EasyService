@@ -1,44 +1,105 @@
+
 USE EasyService;
 DELIMITER //
 
-DROP PROCEDURE IF EXISTS CommandeCreer;
--- DELIMITER //
-CREATE PROCEDURE CommandeCreer (
-    IN inNumCouvert INT UNSIGNED, 
-	IN inIdStaff INT UNSIGNED, 
-	IN inIdService INT UNSIGNED, 
-	IN inIdTable INT UNSIGNED )
+DROP PROCEDURE IF EXISTS AdditionCreer //
+
+CREATE PROCEDURE AdditionCreer (
+	IN inIdCommande INT UNSIGNED) 
 BEGIN
-	DECLARE TableOuverte TINYINT; -- Définit l'état d'ouverture de la commande
+
+	DECLARE InsertedId INT UNSIGNED; -- ID du log sur lequel l'addition est basée
+    DECLARE Prix FLOAT;				 -- Somme du prix total
+    DECLARE AdditionId INT UNSIGNED; -- Identifiant de l'addition potentiellement déjà présente
+	
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
+    BEGIN
+        ROLLBACK; 
+        RESIGNAL;
+    END;
     
-	DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
+    SELECT idAddition
+    INTO additionId
+    FROM Commande
+    WHERE id = inIdCommande;
+    
+    IF AdditionNum IS NULL THEN -- Impossible de créer une addition sur une commande qui en a déjà une
+		START TRANSACTION;
+			INSERT INTO Log (dateLog)
+			VALUES (NOW());
+			
+			SELECT LAST_INSERT_ID()
+			INTO InsertedId;
+			
+			SELECT SUM(prixVente) -- Calcul prix de vente
+			INTO Prix
+			FROM Produit
+			JOIN Commande_Produit ON Commande_Produit.idProduit = Produit.id;
+			
+			INSERT INTO Addition (idLog, coutPrixTotal, estPaye)
+			VALUES (
+				InsertedId,
+				Prix, 
+				FALSE);
+			
+			UPDATE Commande
+			SET idAddition = InsertedId
+			WHERE id = inIdCommande;
+			
+		COMMIT;
+	ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erreur: L\'addition existe déjà';
+	END IF;
+END //
+
+DROP PROCEDURE IF EXISTS AdditionPayer //
+
+CREATE PROCEDURE AdditionPayer (
+	IN inIdCommande INT UNSIGNED)
+BEGIN
+	
+    DECLARE TableSalleId INT UNSIGNED DEFAULT 0; -- ID de la table à fermer
+    DECLARE AdditionModifieeId INT UNSIGNED DEFAULT 0; -- ID de l'addition à modifier
+    
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
     BEGIN
         ROLLBACK; 
         RESIGNAL;
     END;
     
 	START TRANSACTION;
-		SELECT ouvert
-		INTO TableOuverte 
-		FROM tablesalle 
-		WHERE id = inIdTable;
+    
+		SELECT idAddition
+        INTO AdditionModifieeId
+        FROM Commande
+        WHERE id = inIdCommande;
 		
-		IF NOT TableOuverte THEN -- Impossible de créer une commande sur une table ouverte
+		SELECT idTableSalle
+		INTO TableSalleId
+		FROM Commande
+		WHERE idAddition = AdditionModifieeId;
 		
-			UPDATE TableSalle
-			SET ouvert = TRUE
-			WHERE id = inIdTable;
-			
-			INSERT INTO Commande (nombreCouverts, idStaff, idService, idTableSalle)
-			VALUES (inNumCouvert, inIdStaff, inIdService, inIdTable);
-		ELSE
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erreur: Table inexistante ou déjà ouverte à la création de commande';
-		END IF;
+		UPDATE Addition -- Marque l'addition comme payée
+		SET estPaye = TRUE
+		WHERE idLog = AdditionModifieeId;
+		
+		UPDATE TableSalle -- Ferme la table une fois que l'addition est payée
+		SET ouvert = FALSE
+		WHERE id = TableSalleId;
 	COMMIT;
 END //
 
-DROP PROCEDURE IF EXISTS CommandeAjouterProduit;
--- DELIMITER //
+DROP PROCEDURE IF EXISTS CategorieAjouter //
+
+CREATE PROCEDURE CategorieAjouter (
+	IN inNomCategorie VARCHAR(45))
+BEGIN
+	INSERT INTO Categorie (nom)
+    VALUES (inNomCategorie);
+END //
+
+DROP PROCEDURE IF EXISTS CommandeAjouterProduit //
+
 CREATE PROCEDURE CommandeAjouterProduit (
 	IN inIdCommande INT UNSIGNED, 
 	IN inIdProduit INT UNSIGNED, 
@@ -94,8 +155,44 @@ BEGIN
     END IF;
 END //
 
-DROP PROCEDURE IF EXISTS CommandeRetirerProduit;
--- DELIMITER //
+DROP PROCEDURE IF EXISTS CommandeCreer //
+
+CREATE PROCEDURE CommandeCreer (
+    IN inNumCouvert INT UNSIGNED, 
+	IN inIdStaff INT UNSIGNED, 
+	IN inIdService INT UNSIGNED, 
+	IN inIdTable INT UNSIGNED )
+BEGIN
+	DECLARE TableOuverte TINYINT; -- Définit l'état d'ouverture de la commande
+    
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
+    BEGIN
+        ROLLBACK; 
+        RESIGNAL;
+    END;
+    
+	START TRANSACTION;
+		SELECT ouvert
+		INTO TableOuverte 
+		FROM tablesalle 
+		WHERE id = inIdTable;
+		
+		IF NOT TableOuverte THEN -- Impossible de créer une commande sur une table ouverte
+		
+			UPDATE TableSalle
+			SET ouvert = TRUE
+			WHERE id = inIdTable;
+			
+			INSERT INTO Commande (nombreCouverts, idStaff, idService, idTableSalle)
+			VALUES (inNumCouvert, inIdStaff, inIdService, inIdTable);
+		ELSE
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erreur: Table inexistante ou déjà ouverte à la création de commande';
+		END IF;
+	COMMIT;
+END //
+
+DROP PROCEDURE IF EXISTS CommandeRetirerProduit //
+
 CREATE PROCEDURE CommandeRetirerProduit (
 	IN inIdCommande INT UNSIGNED,
     IN inIdProduit INT UNSIGNED,
@@ -153,28 +250,205 @@ BEGIN
     END IF;
 END //
 
-DROP PROCEDURE IF EXISTS AdditionCreer;
--- DELIMITER //
-CREATE PROCEDURE AdditionCreer (
-	IN inIdCommande INT UNSIGNED) 
-BEGIN
+DROP PROCEDURE IF EXISTS CommandeServirElement //
 
-	DECLARE InsertedId INT UNSIGNED; -- ID du log sur lequel l'addition est basée
-    DECLARE Prix FLOAT;				 -- Somme du prix total
-    DECLARE AdditionId INT UNSIGNED; -- Identifiant de l'addition potentiellement déjà présente
+CREATE PROCEDURE CommandeServirElement (
+	IN inIdCommande INT UNSIGNED,
+    IN inIdProduit INT UNSIGNED,
+    IN inNbrProduits INT UNSIGNED)
+BEGIN
 	
+    DECLARE OldProduitsServis INT UNSIGNED; -- Nombre de produits déjà servis
+    DECLARE NumProduitsCommandes INT UNSIGNED; -- Nombre de produits commandés (impossible d'excéder)
+    
     DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
     BEGIN
         ROLLBACK; 
         RESIGNAL;
     END;
     
-    SELECT idAddition
-    INTO additionId
-    FROM Commande
-    WHERE id = inIdCommande;
+	START TRANSACTION;
+                
+		SELECT sortiDeCuisine, nbrDeProduit
+		INTO OldProduitsServis, NumProduitsCommandes
+		FROM Commande_Produit
+		WHERE idCommande = inIdCommande
+			AND idProduit = inIdProduit;
+					
+			IF OldProduitsServis IS NULL OR OldProduitsServis + inNbrProduits > NumProduitsCommandes
+			THEN
+				INSERT INTO Commande_Produit (idCommande, idProduit, nbrDeProduit)
+				VALUES (inIdCommande, inIdProduit, inNbrProduits);
+			ELSE
+				UPDATE Commande_Produit
+				SET sortiDeCuisine = OldProduitsServis + inNbrProduits
+				WHERE 
+					idCommande = inIdCommande
+					AND idProduit = inIdProduit;
+			END IF;
+            
+    COMMIT;
+END //
+
+DROP PROCEDURE IF EXISTS ProduitAjouter //
+
+CREATE PROCEDURE ProduitAjouter (
+	IN inNomProduit VARCHAR(45),
+    IN inPrixVente FLOAT,
+    IN inIdCategorie INT UNSIGNED)
+BEGIN
+	INSERT INTO Produit (nom, prixVente, idCategorie, actif)
+    VALUES (inNomProduit, inPrixVente, inIdCategorie, TRUE);
+END //
+
+DROP PROCEDURE IF EXISTS ProduitAjouterArticle //
+
+CREATE PROCEDURE ProduitAjouterArticle ( -- Les produits s'ajoutent au nom pour montrer comment il est possible de résoudre les noms.
+	IN inNomProduit VARCHAR(45),		 -- Cependant, il nous a paru important de garder la notation ID pour les autres insertions
+    IN inNomArticle VARCHAR(45),         -- afin de garder l'interface qu'une application avec un GUI aurait gardée.
+    IN inNumPortions INT UNSIGNED)
+BEGIN
+
+	DECLARE CalcArticleId INT UNSIGNED; -- ID calculé de l'article en entrée
+    DECLARE CalcProduitId INT UNSIGNED; -- ID calculé du produit en entrée
     
-    IF AdditionNum IS NULL THEN -- Impossible de créer une addition sur une commande qui en a déjà une
+    SELECT id
+    INTO CalcArticleId
+    FROM ArticleStock
+    WHERE nom = inNomArticle;
+    
+    SELECT id
+    INTO CalcProduitId
+    FROM Produit
+    WHERE nom = inNomProduit;
+
+	INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions)
+    VALUES (CalcArticleId, CalcProduitId, inNumPortions);
+
+END //
+
+DROP PROCEDURE IF EXISTS ProduitModifier //
+
+CREATE PROCEDURE ProduitModifier (
+	IN inNom VARCHAR(45),
+    IN inNouveauNom VARCHAR(45),
+    IN inNouveauPrix FLOAT,
+    IN inIdCategorie INT UNSIGNED,
+    IN inActif TINYINT)
+BEGIN
+	UPDATE Produit
+    SET nom = inNouveauNom, 
+		prixVente = inNouveauPrix, 
+		idCategorie = inIdCategorie,
+        actif = inActif
+    WHERE nom = inNom;
+END //
+
+DROP PROCEDURE IF EXISTS ProduitRetirerArticle //
+
+CREATE PROCEDURE ProduitRetirerArticle ( -- La seule occurence où nous sortons des données de notre base. Ceci est nécessaire pour permettre
+	IN inNomProduit VARCHAR(45), 		 -- la redéfinition ad eternam de produits sans recourir à une composante supplémentaire de clé primaire.
+    IN inNomArticle VARCHAR(45))
+BEGIN
+	
+    DECLARE CalcArticleId INT UNSIGNED; -- ID calculé de l'article en entrée
+    DECLARE CalcProduitId INT UNSIGNED; -- ID calculé du produit en entrée
+    
+    SELECT id
+    INTO CalcArticleId
+    FROM ArticleStock
+    WHERE nom = inNomArticle;
+    
+    SELECT id
+    INTO CalcProduitId
+    FROM Produit
+    WHERE nom = inNomProduit;
+    
+    DELETE FROM ArticleStock_Produit
+    WHERE idArticleStock = CalcArticleId
+		AND idProduit = CalcProduitId;
+    
+END //
+
+DROP PROCEDURE IF EXISTS ServiceAjouter //
+
+CREATE PROCEDURE ServiceAjouter (
+	IN inServiceDebut TIME,
+    IN inServiceFin TIME)
+BEGIN
+	
+    IF NOT EXISTS ( -- Si aucun service que le nouveau chevaucherait n'existe
+		SELECT id
+        FROM Service
+        WHERE debut <= inServiceDebut AND fin > inServiceDebut
+			OR debut >= inServiceDebut AND debut < inServiceFin
+    ) AND inServiceDebut < inServiceFin THEN
+		INSERT INTO Service (debut, fin, actif)
+		VALUES (inServiceDebut, inServiceFin, TRUE);
+	ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erreur: Deux services ne peuvent pas se chevaucher';
+	END IF;
+    
+END //
+
+DROP PROCEDURE IF EXISTS ServiceModifier //
+
+CREATE PROCEDURE ServiceModifier (
+	IN inIdService INT UNSIGNED,
+	IN inNouveauDebut TIME,
+    IN inNouveauFin TIME,
+    IN inActif TINYINT)
+BEGIN
+	
+    IF NOT EXISTS ( -- Si aucun service que la nouvelle définition du courant chevaucherait n'existe
+			SELECT id
+			FROM Service
+			WHERE (debut <= inNouveauDebut AND fin > inNouveauDebut
+				OR debut >= inNouvauDebut AND debut < inNouveauFin)
+				AND id != inIdService
+		) AND inNouveauDebut < inNouveauFin THEN
+			UPDATE Service
+            SET debut = inNouveauDebut, fin = inNouveauFin, actif = inActif
+            WHERE id = inIdService;
+	ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erreur: Deux services ne peuvent pas se chevaucher';
+	END IF;
+
+END //
+
+DROP PROCEDURE IF EXISTS StaffAjouter //
+
+CREATE PROCEDURE StaffAjouter (
+	IN inNom VARCHAR(45),
+    IN inPrenom VARCHAR(45),
+    IN inDateNaissance DATE)
+BEGIN
+	
+	INSERT INTO Staff (nom, prenom, dateNaissance, actif)
+    VALUES (inNom, inPrenom, inDateNaissance, TRUE);
+    
+END //
+
+DROP PROCEDURE IF EXISTS StaffEntrer //
+
+CREATE PROCEDURE StaffEntrer ( -- Crée un log d'entrée d'un membre du staff à l'instant NOW.
+	IN inIdStaff INT UNSIGNED)
+BEGIN
+
+	DECLARE InsertedId INT UNSIGNED; -- ID du log créé
+    
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
+    BEGIN
+        ROLLBACK; 
+        RESIGNAL;
+    END;
+    
+    IF NOT EXISTS (
+		SELECT id
+		FROM HistoriqueStaff
+		WHERE idStaff = inIdStaff
+			AND fin IS NULL) 
+	THEN
 		START TRANSACTION;
 			INSERT INTO Log (dateLog)
 			VALUES (NOW());
@@ -182,35 +456,32 @@ BEGIN
 			SELECT LAST_INSERT_ID()
 			INTO InsertedId;
 			
-			SELECT SUM(prixVente) -- Calcul prix de vente
-			INTO Prix
-			FROM Produit
-			JOIN Commande_Produit ON Commande_Produit.idProduit = Produit.id;
-			
-			INSERT INTO Addition (idLog, coutPrixTotal, estPaye)
-			VALUES (
-				InsertedId,
-				Prix, 
-				FALSE);
-			
-			UPDATE Commande
-			SET idAddition = InsertedId
-			WHERE id = inIdCommande;
-			
+			INSERT INTO historiqueStaff (idLog, debut, idStaff)
+			VALUES (InsertedId, NOW(), inIdStaff);
 		COMMIT;
 	ELSE
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erreur: L\'addition existe déjà';
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erreur: Impossible d\'ouvrir deux entrées en service sans sortir de la précédente.';
 	END IF;
 END //
 
-DROP PROCEDURE IF EXISTS AdditionPayer;
--- DELIMITER //
-CREATE PROCEDURE AdditionPayer (
-	IN inIdCommande INT UNSIGNED)
+DROP PROCEDURE IF EXISTS StaffRenvoyer //
+
+CREATE PROCEDURE StaffRenvoyer (
+	IN inIdStaff INT UNSIGNED)
 BEGIN
 	
-    DECLARE TableSalleId INT UNSIGNED DEFAULT 0; -- ID de la table à fermer
-    DECLARE AdditionModifieeId INT UNSIGNED DEFAULT 0; -- ID de l'addition à modifier
+    UPDATE Staff
+    SET actif = FALSE
+    WHERE id = inIdStaff;
+    
+END //
+
+DROP PROCEDURE IF EXISTS StaffSortir //
+
+CREATE PROCEDURE StaffSortir ( -- Modifie le dernier log d'entrée d'un membre du staff à l'instant NOW.
+	IN inIdStaff INT UNSIGNED)
+BEGIN
+	DECLARE LigneAFinirId INT UNSIGNED; -- L'identifiant du log d'entrée en question
     
     DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
     BEGIN
@@ -219,95 +490,20 @@ BEGIN
     END;
     
 	START TRANSACTION;
-    
-		SELECT idAddition
-        INTO AdditionModifieeId
-        FROM Commande
-        WHERE id = inIdCommande;
-		
-		SELECT idTableSalle
-		INTO TableSalleId
-		FROM Commande
-		WHERE idAddition = AdditionModifieeId;
-		
-		UPDATE Addition -- Marque l'addition comme payée
-		SET estPaye = TRUE
-		WHERE idLog = AdditionModifieeId;
-		
-		UPDATE TableSalle -- Ferme la table une fois que l'addition est payée
-		SET ouvert = FALSE
-		WHERE id = TableSalleId;
-	COMMIT;
-END //
-
-DROP PROCEDURE IF EXISTS StockInserer;
--- DELIMITER //
-CREATE PROCEDURE StockInserer (
-	IN inIdArticle INT UNSIGNED,
-    IN inNumArticle INT UNSIGNED,
-    IN inDatePeremption DATETIME,
-    IN inPrixAchat FLOAT)
-BEGIN
-    
-    INSERT INTO LotArticle (idArticleStock, nombrePortions, datePeremption, prixAchat)
-    VALUES (inIdArticle, inNumArticle, inDatePeremption, inPrixAchat);
-    
-END //
-
-DROP PROCEDURE IF EXISTS StockSortirSelonCommande;
--- DELIMITER //
-CREATE PROCEDURE StockSortirSelonCommande(
-	IN inIdCommande INT UNSIGNED)
-BEGIN
-	
-    DECLARE InsertedId INT UNSIGNED; -- ID du log créé
-    DECLARE ForLoopTracker INT UNSIGNED DEFAULT 0; -- Trackeur de la boucle
-    DECLARE MaximumLoopTracker INT UNSIGNED DEFAULT 0; -- Définition de la sortie de la boucle
-    DECLARE ProduitCourantId INT; -- Variable de travail pour le type de produits en cours de traitement
-    DECLARE ProduitCourantNbr INT; -- Variable de travail pour le nombre de produits du type en traitement
-    
-    
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
-    BEGIN
-        ROLLBACK; 
-        RESIGNAL;
-    END;
-    
-	START TRANSACTION;
-		INSERT INTO Log (dateLog)
-		VALUES (NOW());
-		
-		SELECT LAST_INSERT_ID()
-		INTO InsertedId;
-		
-		INSERT INTO EcritureStock (idLog, idCommande)
-		VALUES (InsertedId, inIdCommande);
-        
-        SELECT COUNT(idProduit)
-        INTO MaximumLoopTracker
-        FROM Commande_Produit
-        WHERE idCommande = inIdCommande;
-        
-        REPEAT -- Probablement plus propre avec un curseur. Itère à travers les éléments de la commande et les soustrait du stock.
-        
-			SELECT idProduit, nbrDeProduit
-			INTO ProduitCourantId, ProduitCourantNbr
-			FROM Commande_Produit
-			WHERE idCommande = inIdCommande
-            ORDER BY idProduit ASC
-            LIMIT ForLoopTracker, 1;
+		SELECT idLog
+		INTO LigneAFinirId
+		FROM HistoriqueStaff
+		WHERE idStaff = inIdStaff
+			AND fin IS NULL;
 			
-			CALL StockDeduireProduit(ProduitCourantId, ProduitCourantNbr, InsertedId);
-            
-            SET ForLoopTracker = ForLoopTracker + 1;
-            
-            UNTIL ForLoopTracker >= MaximumLoopTracker
-        END REPEAT;
-	COMMIT;
+		UPDATE HistoriqueStaff
+		SET fin = NOW()
+		WHERE idLog = LigneAFinirId;
+	COMMIT;    
 END //
 
-DROP PROCEDURE IF EXISTS StockDeduireProduit;
--- DELIMITER //
+DROP PROCEDURE IF EXISTS StockDeduireProduit //
+
 CREATE PROCEDURE StockDeduireProduit (
 	IN inIdProduit INT UNSIGNED,
     IN inNumProduit INT UNSIGNED, -- Nombre de fois qu'il faut déduire le produit
@@ -392,16 +588,32 @@ BEGIN
     COMMIT;
 END //
 
-DROP PROCEDURE IF EXISTS CommandeServirElement;
--- DELIMITER //
-CREATE PROCEDURE CommandeServirElement (
-	IN inIdCommande INT UNSIGNED,
-    IN inIdProduit INT UNSIGNED,
-    IN inNbrProduits INT UNSIGNED)
+DROP PROCEDURE IF EXISTS StockInserer //
+
+CREATE PROCEDURE StockInserer (
+	IN inIdArticle INT UNSIGNED,
+    IN inNumArticle INT UNSIGNED,
+    IN inDatePeremption DATETIME,
+    IN inPrixAchat FLOAT)
+BEGIN
+    
+    INSERT INTO LotArticle (idArticleStock, nombrePortions, datePeremption, prixAchat)
+    VALUES (inIdArticle, inNumArticle, inDatePeremption, inPrixAchat);
+    
+END //
+
+DROP PROCEDURE IF EXISTS StockSortirSelonCommande //
+
+CREATE PROCEDURE StockSortirSelonCommande(
+	IN inIdCommande INT UNSIGNED)
 BEGIN
 	
-    DECLARE OldProduitsServis INT UNSIGNED; -- Nombre de produits déjà servis
-    DECLARE NumProduitsCommandes INT UNSIGNED; -- Nombre de produits commandés (impossible d'excéder)
+    DECLARE InsertedId INT UNSIGNED; -- ID du log créé
+    DECLARE ForLoopTracker INT UNSIGNED DEFAULT 0; -- Trackeur de la boucle
+    DECLARE MaximumLoopTracker INT UNSIGNED DEFAULT 0; -- Définition de la sortie de la boucle
+    DECLARE ProduitCourantId INT; -- Variable de travail pour le type de produits en cours de traitement
+    DECLARE ProduitCourantNbr INT; -- Variable de travail pour le nombre de produits du type en traitement
+    
     
     DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
     BEGIN
@@ -410,193 +622,40 @@ BEGIN
     END;
     
 	START TRANSACTION;
-                
-		SELECT sortiDeCuisine, nbrDeProduit
-		INTO OldProduitsServis, NumProduitsCommandes
-		FROM Commande_Produit
-		WHERE idCommande = inIdCommande
-			AND idProduit = inIdProduit;
-					
-			IF OldProduitsServis IS NULL OR OldProduitsServis + inNbrProduits > NumProduitsCommandes
-			THEN
-				INSERT INTO Commande_Produit (idCommande, idProduit, nbrDeProduit)
-				VALUES (inIdCommande, inIdProduit, inNbrProduits);
-			ELSE
-				UPDATE Commande_Produit
-				SET sortiDeCuisine = OldProduitsServis + inNbrProduits
-				WHERE 
-					idCommande = inIdCommande
-					AND idProduit = inIdProduit;
-			END IF;
+		INSERT INTO Log (dateLog)
+		VALUES (NOW());
+		
+		SELECT LAST_INSERT_ID()
+		INTO InsertedId;
+		
+		INSERT INTO EcritureStock (idLog, idCommande)
+		VALUES (InsertedId, inIdCommande);
+        
+        SELECT COUNT(idProduit)
+        INTO MaximumLoopTracker
+        FROM Commande_Produit
+        WHERE idCommande = inIdCommande;
+        
+        REPEAT -- Probablement plus propre avec un curseur. Itère à travers les éléments de la commande et les soustrait du stock.
+        
+			SELECT idProduit, nbrDeProduit
+			INTO ProduitCourantId, ProduitCourantNbr
+			FROM Commande_Produit
+			WHERE idCommande = inIdCommande
+            ORDER BY idProduit ASC
+            LIMIT ForLoopTracker, 1;
+			
+			CALL StockDeduireProduit(ProduitCourantId, ProduitCourantNbr, InsertedId);
             
-    COMMIT;
-END //
-    
-DROP PROCEDURE IF EXISTS StaffEntrer;
--- DELIMITER //
-CREATE PROCEDURE StaffEntrer ( -- Crée un log d'entrée d'un membre du staff à l'instant NOW.
-	IN inIdStaff INT UNSIGNED)
-BEGIN
-
-	DECLARE InsertedId INT UNSIGNED; -- ID du log créé
-    
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
-    BEGIN
-        ROLLBACK; 
-        RESIGNAL;
-    END;
-    
-    IF NOT EXISTS (
-		SELECT id
-		FROM HistoriqueStaff
-		WHERE idStaff = inIdStaff
-			AND fin IS NULL) 
-	THEN
-		START TRANSACTION;
-			INSERT INTO Log (dateLog)
-			VALUES (NOW());
-			
-			SELECT LAST_INSERT_ID()
-			INTO InsertedId;
-			
-			INSERT INTO historiqueStaff (idLog, debut, idStaff)
-			VALUES (InsertedId, NOW(), inIdStaff);
-		COMMIT;
-	ELSE
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erreur: Impossible d\'ouvrir deux entrées en service sans sortir de la précédente.';
-	END IF;
+            SET ForLoopTracker = ForLoopTracker + 1;
+            
+            UNTIL ForLoopTracker >= MaximumLoopTracker
+        END REPEAT;
+	COMMIT;
 END //
 
-DROP PROCEDURE IF EXISTS StaffSortir;
--- DELIMITER //
-CREATE PROCEDURE StaffSortir ( -- Modifie le dernier log d'entrée d'un membre du staff à l'instant NOW.
-	IN inIdStaff INT UNSIGNED)
-BEGIN
-	DECLARE LigneAFinirId INT UNSIGNED; -- L'identifiant du log d'entrée en question
-    
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'unicité de la transaction
-    BEGIN
-        ROLLBACK; 
-        RESIGNAL;
-    END;
-    
-	START TRANSACTION;
-		SELECT idLog
-		INTO LigneAFinirId
-		FROM HistoriqueStaff
-		WHERE idStaff = inIdStaff
-			AND fin IS NULL;
-			
-		UPDATE HistoriqueStaff
-		SET fin = NOW()
-		WHERE idLog = LigneAFinirId;
-	COMMIT;    
-END //
+DROP PROCEDURE IF EXISTS TableAjouter //
 
-DROP PROCEDURE IF EXISTS ProduitAjouter;
--- DELIMITER // 
-CREATE PROCEDURE ProduitAjouter (
-	IN inNomProduit VARCHAR(45),
-    IN inPrixVente FLOAT,
-    IN inIdCategorie INT UNSIGNED)
-BEGIN
-	INSERT INTO Produit (nom, prixVente, idCategorie, actif)
-    VALUES (inNomProduit, inPrixVente, inIdCategorie, TRUE);
-END //
-
-DROP PROCEDURE IF EXISTS ProduitModifier;
--- DELIMITER //
-CREATE PROCEDURE ProduitModifier (
-	IN inNom VARCHAR(45),
-    IN inNouveauNom VARCHAR(45),
-    IN inNouveauPrix FLOAT,
-    IN inIdCategorie INT UNSIGNED,
-    IN inActif TINYINT)
-BEGIN
-	UPDATE Produit
-    SET nom = inNouveauNom, 
-		prixVente = inNouveauPrix, 
-		idCategorie = inIdCategorie,
-        actif = inActif
-    WHERE nom = inNom;
-END //
-
-DROP PROCEDURE IF EXISTS ProduitAjouterArticle;
--- DELIMITER //
-CREATE PROCEDURE ProduitAjouterArticle ( -- Les produits s'ajoutent au nom pour montrer comment il est possible de résoudre les noms.
-	IN inNomProduit VARCHAR(45),		 -- Cependant, il nous a paru important de garder la notation ID pour les autres insertions
-    IN inNomArticle VARCHAR(45),         -- afin de garder l'interface qu'une application avec un GUI aurait gardée.
-    IN inNumPortions INT UNSIGNED)
-BEGIN
-
-	DECLARE CalcArticleId INT UNSIGNED; -- ID calculé de l'article en entrée
-    DECLARE CalcProduitId INT UNSIGNED; -- ID calculé du produit en entrée
-    
-    SELECT id
-    INTO CalcArticleId
-    FROM ArticleStock
-    WHERE nom = inNomArticle;
-    
-    SELECT id
-    INTO CalcProduitId
-    FROM Produit
-    WHERE nom = inNomProduit;
-
-	INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions)
-    VALUES (CalcArticleId, CalcProduitId, inNumPortions);
-
-END //
-
-DROP PROCEDURE IF EXISTS ProduitRetirerArticle;
--- DELIMITER //
-CREATE PROCEDURE ProduitRetirerArticle ( -- La seule occurence où nous sortons des données de notre base. Ceci est nécessaire pour permettre
-	IN inNomProduit VARCHAR(45), 		 -- la redéfinition ad eternam de produits sans recourir à une composante supplémentaire de clé primaire.
-    IN inNomArticle VARCHAR(45))
-BEGIN
-	
-    DECLARE CalcArticleId INT UNSIGNED; -- ID calculé de l'article en entrée
-    DECLARE CalcProduitId INT UNSIGNED; -- ID calculé du produit en entrée
-    
-    SELECT id
-    INTO CalcArticleId
-    FROM ArticleStock
-    WHERE nom = inNomArticle;
-    
-    SELECT id
-    INTO CalcProduitId
-    FROM Produit
-    WHERE nom = inNomProduit;
-    
-    DELETE FROM ArticleStock_Produit
-    WHERE idArticleStock = CalcArticleId
-		AND idProduit = CalcProduitId;
-    
-END //
-
-DROP PROCEDURE IF EXISTS CategorieAjouter ;
--- DELIMITER // 
-CREATE PROCEDURE CategorieAjouter (
-	IN inNomCategorie VARCHAR(45))
-BEGIN
-	INSERT INTO Categorie (nom)
-    VALUES (inNomCategorie);
-END //
-
-DROP PROCEDURE IF EXISTS StaffAjouter;
--- DELIMITER //
-CREATE PROCEDURE StaffAjouter (
-	IN inNom VARCHAR(45),
-    IN inPrenom VARCHAR(45),
-    IN inDateNaissance DATE)
-BEGIN
-	
-	INSERT INTO Staff (nom, prenom, dateNaissance, actif)
-    VALUES (inNom, inPrenom, inDateNaissance, TRUE);
-    
-END //
-
-DROP PROCEDURE IF EXISTS TableAjouter;
--- DELIMITER //
 CREATE PROCEDURE TableAjouter ()
 BEGIN
 
@@ -605,65 +664,7 @@ BEGIN
 
 END //
 
-DROP PROCEDURE IF EXISTS ServiceAjouter;
--- DELIMITER //
-CREATE PROCEDURE ServiceAjouter (
-	IN inServiceDebut TIME,
-    IN inServiceFin TIME)
-BEGIN
-	
-    IF NOT EXISTS ( -- Si aucun service que le nouveau chevaucherait n'existe
-		SELECT id
-        FROM Service
-        WHERE debut <= inServiceDebut AND fin > inServiceDebut
-			OR debut >= inServiceDebut AND debut < inServiceFin
-    ) AND inServiceDebut < inServiceFin THEN
-		INSERT INTO Service (debut, fin, actif)
-		VALUES (inServiceDebut, inServiceFin, TRUE);
-	ELSE
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erreur: Deux services ne peuvent pas se chevaucher';
-	END IF;
+
     
-END //
-
-DROP PROCEDURE IF EXISTS ServiceModifier;
--- DELIMITER //
-CREATE PROCEDURE ServiceModifier (
-	IN inIdService INT UNSIGNED,
-	IN inNouveauDebut TIME,
-    IN inNouveauFin TIME,
-    IN inActif TINYINT)
-BEGIN
-	
-    IF NOT EXISTS ( -- Si aucun service que la nouvelle définition du courant chevaucherait n'existe
-			SELECT id
-			FROM Service
-			WHERE (debut <= inNouveauDebut AND fin > inNouveauDebut
-				OR debut >= inNouvauDebut AND debut < inNouveauFin)
-				AND id != inIdService
-		) AND inNouveauDebut < inNouveauFin THEN
-			UPDATE Service
-            SET debut = inNouveauDebut, fin = inNouveauFin, actif = inActif
-            WHERE id = inIdService;
-	ELSE
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erreur: Deux services ne peuvent pas se chevaucher';
-	END IF;
-
-END //
-
-DROP PROCEDURE IF EXISTS StaffRenvoyer;
--- DELIMITER //
-CREATE PROCEDURE StaffRenvoyer (
-	IN inIdStaff INT UNSIGNED)
-BEGIN
-	
-    UPDATE Staff
-    SET actif = FALSE
-    WHERE id = inIdStaff;
-    
-END //
-
-
-
 
 
