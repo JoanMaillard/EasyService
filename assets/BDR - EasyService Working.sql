@@ -21,19 +21,22 @@ CREATE TABLE IF NOT EXISTS Staff (
 	nom VARCHAR(45) NOT NULL,
 	prenom VARCHAR(45) NOT NULL,
 	dateNaissance DATE NOT NULL,
-  
+	actif TINYINT NOT NULL,
+    
 	CONSTRAINT PK_Staff PRIMARY KEY (id),
-	CONSTRAINT UC_Staff_nom_prenom_dateNaissance UNIQUE(nom, prenom, dateNaissance)
+	CONSTRAINT UC_Staff_nom_prenom_dateNaissance UNIQUE (nom, prenom, dateNaissance)
   );
 -- -----------------------------------------------------
 -- Table Service
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS Service (
-  id INT UNSIGNED AUTO_INCREMENT,
-  debut TIME NOT NULL,
-  fin TIME,
+	id INT UNSIGNED AUTO_INCREMENT,
+	debut TIME NOT NULL,
+	fin TIME,
+	actif TINYINT NOT NULL,
   
-  CONSTRAINT PK_Service PRIMARY KEY (id)
+	CONSTRAINT PK_Service PRIMARY KEY (id),
+    CONSTRAINT UC_Service_debut_fin UNIQUE (debut, fin)
 );
 
 
@@ -46,8 +49,6 @@ CREATE TABLE IF NOT EXISTS TableSalle (
   
 	CONSTRAINT PK_TableSalle PRIMARY KEY (id)
 );
-
-
 
 -- -----------------------------------------------------
 -- Table Commande
@@ -62,7 +63,6 @@ CREATE TABLE IF NOT EXISTS Commande (
   
 	CONSTRAINT PK_Commande PRIMARY KEY (id)
 );
-
 
 -- -----------------------------------------------------
 -- Table Categorie
@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS Produit (
 	id INT UNSIGNED AUTO_INCREMENT,
 	nom VARCHAR(45) NOT NULL UNIQUE,
 	prixVente FLOAT NOT NULL,
+    actif TINYINT NOT NULL,
 	idCategorie INT UNSIGNED NOT NULL,
   
 	CONSTRAINT PK_Produit PRIMARY KEY (id)
@@ -98,7 +99,6 @@ CREATE TABLE IF NOT EXISTS Commande_Produit (
 	CONSTRAINT PK_Commande_Produit PRIMARY KEY (idCommande, idProduit)
 );
 
-
 -- -----------------------------------------------------
 -- Table ArticleStock
 -- -----------------------------------------------------
@@ -108,7 +108,6 @@ CREATE TABLE IF NOT EXISTS ArticleStock (
   
 	CONSTRAINT PK_ArticleStock PRIMARY KEY (id)
 );
-
 
 -- -----------------------------------------------------
 -- Table LotArticle
@@ -123,7 +122,6 @@ CREATE TABLE IF NOT EXISTS LotArticle (
 	CONSTRAINT PK_LotArticle PRIMARY KEY (id)
 );
 
-
 -- -----------------------------------------------------
 -- Table Log
 -- -----------------------------------------------------
@@ -134,18 +132,18 @@ CREATE TABLE IF NOT EXISTS Log (
 	CONSTRAINT PK_Log PRIMARY KEY (id)
 );
 
-
 -- -----------------------------------------------------
 -- Table HistoriqueStaff
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS HistoriqueStaff (
-	idLog INT UNSIGNED, -- NOT NULL retiré ici car PK et FK, je laisse ?
+	idLog INT UNSIGNED,
 	debut DATETIME NOT NULL,
 	fin DATETIME,
 	idStaff INT UNSIGNED NOT NULL,
   
 	CONSTRAINT PK_HistoriqueStaff PRIMARY KEY (idLog)
 );
+
 -- -----------------------------------------------------
 -- Table Addition
 -- -----------------------------------------------------
@@ -155,8 +153,8 @@ CREATE TABLE IF NOT EXISTS Addition (
 	estPaye TINYINT NOT NULL,
  
 	CONSTRAINT PK_Addition PRIMARY KEY (idLog)
-  
  );
+ 
 -- -----------------------------------------------------
 -- Table EcritureStock
 -- -----------------------------------------------------
@@ -166,8 +164,7 @@ CREATE TABLE IF NOT EXISTS EcritureStock (
   
 	CONSTRAINT PK_EcritureStock PRIMARY KEY (idLog)
 );
- 
- 
+
 -- -----------------------------------------------------
 -- Table ArticleStock_Produit
 -- -----------------------------------------------------
@@ -178,7 +175,6 @@ CREATE TABLE IF NOT EXISTS ArticleStock_Produit (
   
 	CONSTRAINT PK_ArticleStock_Produit PRIMARY KEY (idArticleStock, idProduit)
 );
-
 
 -- -----------------------------------------------------
 -- Table EcritureStock_LotArticle
@@ -192,24 +188,23 @@ CREATE TABLE IF NOT EXISTS EcritureStock_LotArticle (
 );
 
   
+  
+  
 -- -----------------------------------------------------
 -- Alteration des tables :
--- -----------------------------------------------------
 
--- ALTER TABLE Categorie ADD CONSTRAINT UC_Categorie_nom UNIQUE (nom);
 	
 
 -- -----------------------------------------------------
 -- Alteration table Commande
 -- -----------------------------------------------------
 
--- création d'index.
 CREATE INDEX IDX_FK_Commande_idStaff ON Commande (idStaff);
 CREATE INDEX IDX_FK_Commande_idService ON Commande (idService);
 CREATE INDEX IDX_FK_Commande_idTableSalle ON Commande (idTableSalle);
 CREATE INDEX IDX_FK_Commande_idAddition ON Commande(idAddition);
 
--- créations de contraintes de clés étrangères.
+
 ALTER TABLE Commande ADD CONSTRAINT FK_Commande_idStaff
 	FOREIGN KEY (idStaff) REFERENCES Staff (id)
 		ON DELETE CASCADE
@@ -230,6 +225,7 @@ ALTER TABLE Commande ADD CONSTRAINT FK_Commande_idAddition
 		ON DELETE CASCADE
 		ON UPDATE CASCADE;
 
+
 -- -----------------------------------------------------
 -- Alteration table Produit
 -- -----------------------------------------------------
@@ -240,11 +236,13 @@ ALTER TABLE Produit ADD CONSTRAINT FK_Produit_idCategorie
     ON DELETE CASCADE
     ON UPDATE CASCADE;
 
+
 -- -----------------------------------------------------
 -- Alteration table Commande_Produit
 -- -----------------------------------------------------
 CREATE INDEX IDX_FK_Commande_Produit_idCommande ON Commande_Produit(idCommande);
 CREATE INDEX IDX_FK_Commande_Produit_idProduit ON Commande_Produit(idProduit);
+  
   
 ALTER TABLE Commande_Produit ADD CONSTRAINT FK_Commande_Produit_idCommande
     FOREIGN KEY (idCommande) REFERENCES Commande (id)
@@ -255,7 +253,8 @@ ALTER TABLE Commande_Produit ADD CONSTRAINT FK_Commande_Produit_idProduit
 	FOREIGN KEY (idProduit) REFERENCES Produit (id)
 		ON DELETE CASCADE
 		ON UPDATE CASCADE;
-        
+      
+      
 -- -----------------------------------------------------
 -- Alteration table LotArticle
 -- -----------------------------------------------------    
@@ -265,7 +264,6 @@ ALTER TABLE LotArticle ADD CONSTRAINT FK_LotArticle_idArticleStock
     FOREIGN KEY (idArticleStock) REFERENCES EasyService.ArticleStock (id)
     ON DELETE CASCADE
     ON UPDATE CASCADE;
-    
 
 
 -- -----------------------------------------------------
@@ -302,6 +300,7 @@ ALTER TABLE Addition ADD CONSTRAINT FK_Addition_idLog
 CREATE INDEX IDX_FK_EcritureStock_idLog ON EcritureStock (idLog);
 CREATE INDEX IDX_FK_EcritureStock_idCommande ON EcritureStock (idCommande);
   
+  
 ALTER TABLE EcritureStock ADD CONSTRAINT FK_EcritureStock_idLog
     FOREIGN KEY (idLog) REFERENCES Log (id)
 		ON DELETE CASCADE
@@ -320,6 +319,7 @@ ALTER TABLE EcritureStock ADD CONSTRAINT FK_EcritureStock_idCommande
 CREATE INDEX IDX_FK_ArticleStock_Produit_idProduit ON ArticleStock_Produit (idProduit);
 CREATE INDEX IDX_FK_ArticleStock_Produit_idArticleStock ON ArticleStock_Produit (idArticleStock);
 
+
 ALTER TABLE ArticleStock_Produit ADD CONSTRAINT FK_ArticleStock_Produit_idArticleStock
     FOREIGN KEY (idArticleStock) REFERENCES ArticleStock (id)
 		ON DELETE CASCADE
@@ -337,6 +337,7 @@ ALTER TABLE ArticleStock_Produit ADD CONSTRAINT FK_ArticleStock_Produit_idProdui
 CREATE INDEX IDX_FK_EcritureStock_LotArticle_idLotArticle ON EcritureStock_LotArticle (idLotArticle);
 CREATE INDEX IDX_FK_EcritureStock_LotArticle_idEcritureStock ON EcritureStock_LotArticle (idEcritureStock_Log);
 
+
 ALTER TABLE EcritureStock_LotArticle ADD CONSTRAINT FK_EcritureStock_LotArticle_idEcritureStock
     FOREIGN KEY (idEcritureStock_Log) REFERENCES EasyService.EcritureStock (idLog)
 		ON DELETE CASCADE
@@ -347,6 +348,3 @@ ALTER TABLE EcritureStock_LotArticle ADD CONSTRAINT FK_EcritureStock_LotArticle_
 		ON DELETE CASCADE
 		ON UPDATE CASCADE;
     
--- SET SQL_MODE=@OLD_SQL_MODE;
--- SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
--- SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;

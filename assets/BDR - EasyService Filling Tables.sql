@@ -23,29 +23,42 @@ INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock
 INSERT INTO ArticleStock (nom) VALUES ('Sprite');
 INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2022-12-01', 50, 3.50, 4);
 
-
 -- Légumes
 INSERT INTO ArticleStock (nom) VALUES ('Tomtate');
-INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2022-12-01', 50, 3.50, 5);
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2021-02-12', 200, 0.50, 5);
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2021-02-12', 2, 0.50, 5);
 INSERT INTO ArticleStock (nom) VALUES ('Salade');
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2021-02-08', 250, 0.20, 6);
 INSERT INTO ArticleStock (nom) VALUES ('Oignon');
-INSERT INTO ArticleStock (nom) VALUES ('Ail');
-INSERT INTO ArticleStock (nom) VALUES ('Courgette');
-INSERT INTO ArticleStock (nom) VALUES ('Carotte');
-INSERT INTO ArticleStock (nom) VALUES ('Aubergine');
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2021-02-08', 250, 0.20, 7);
 
 -- Viandes
 INSERT INTO ArticleStock (nom) VALUES ('Poulet');
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2021-02-21', 50, 7.00, 8);
 INSERT INTO ArticleStock (nom) VALUES ('Bacon');
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2021-02-20', 50, 5.00, 9);
 INSERT INTO ArticleStock (nom) VALUES ('Boeuf');
-INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2022-12-01', 50, 3.50, 14);
-INSERT INTO ArticleStock (nom) VALUES ('Cheval');
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2021-02-08', 50, 8.00, 10);
 
 -- Pâtes
 INSERT INTO ArticleStock (nom) VALUES ('Penne');
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2022-12-01', 50, 3.50, 11);
 INSERT INTO ArticleStock (nom) VALUES ('Spaghetti');
-INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2022-12-01', 50, 3.50, 17);
-INSERT INTO ArticleStock (nom) VALUES ('Ravioli');
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2022-12-01', 50, 2.50, 12);
+INSERT INTO LotArticle(datePeremption, nombrePortions, prixAchat, idArticleStock) VALUES ('2021-02-12', 50, 2.50, 12);
+
+
+-- Création des plats :
+INSERT INTO Produit (nom, prixVente, idCategorie) VALUES ('Bolo', 18.5, 7);
+INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions) VALUES (5, 1, 2);
+INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions) VALUES (10, 1, 1);
+INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions) VALUES (12, 1, 1);
+
+INSERT INTO Produit (nom, prixVente, idCategorie) VALUES ('Penne Bacon Ognion', 12.5, 7);
+INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions) VALUES (5, 2, 2);
+INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions) VALUES (10, 2, 1);
+INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions) VALUES (11, 2, 1);
+
 
 
 INSERT INTO Service(debut, fin) VALUES ('05:30:00', '10:30:00');
@@ -70,7 +83,4 @@ INSERT INTO Categorie (nom) VALUES ('Pates');
 INSERT INTO Categorie (nom) VALUES ('Vegetarien');
 INSERT INTO Categorie (nom) VALUES ('Dessert');
 
-INSERT INTO Produit (nom, prixVente, idCategorie) VALUES ('Bolo', 18.5, 7);
-INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions) VALUES (5, 1, 2);
-INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions) VALUES (14, 1, 1);
-INSERT INTO ArticleStock_Produit (idArticleStock, idProduit, nombrePortions) VALUES (17, 1, 1);
+
