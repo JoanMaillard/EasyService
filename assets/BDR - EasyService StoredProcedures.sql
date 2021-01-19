@@ -67,6 +67,7 @@ BEGIN
 
 	DECLARE OldNbrProduits INT UNSIGNED;
     DECLARE AdditionNum INT UNSIGNED;
+    DECLARE ProduitValide TINYINT;
     
     DECLARE EXIT HANDLER FOR SQLEXCEPTION -- garantit l'atomicité de la transaction
     BEGIN
@@ -79,7 +80,12 @@ BEGIN
     FROM Commande
     WHERE id = inIdCommande;
     
-    IF AdditionNum IS NULL THEN
+    SELECT actif
+	INTO ProduitValide
+    FROM Produit
+    WHERE id = inIdProduit;
+    
+    IF AdditionNum IS NULL AND ProduitValide = TRUE THEN
 		START TRANSACTION;
 			SELECT nbrDeProduit
 				INTO OldNbrProduits
@@ -494,8 +500,8 @@ CREATE PROCEDURE ProduitAjouter (
     IN inPrixVente FLOAT,
     IN inIdCategorie INT UNSIGNED)
 BEGIN
-	INSERT INTO Produit (nom, prixVente, idCategorie)
-    VALUES (inNomProduit, inPrixVente, inIdCategorie);
+	INSERT INTO Produit (nom, prixVente, idCategorie, actif)
+    VALUES (inNomProduit, inPrixVente, inIdCategorie, TRUE);
 END //
 
 DROP PROCEDURE IF EXISTS ProduitModifier;
@@ -504,12 +510,14 @@ CREATE PROCEDURE ProduitModifier (
 	IN inNom VARCHAR(45),
     IN inNouveauNom VARCHAR(45),
     IN inNouveauPrix FLOAT,
-    IN inIdCategorie INT UNSIGNED)
+    IN inIdCategorie INT UNSIGNED,
+    IN inActif TINYINT)
 BEGIN
 	UPDATE Produit
     SET nom = inNouveauNom, 
 		prixVente = inNouveauPrix, 
-		idCategorie = inIdCategorie
+		idCategorie = inIdCategorie,
+        actif = inActif
     WHERE nom = inNom;
 END //
 
@@ -582,8 +590,8 @@ CREATE PROCEDURE StaffAjouter (
     IN inDateNaissance DATE)
 BEGIN
 	
-	INSERT INTO Staff (nom, prenom, dateNaissance)
-    VALUES (inNom, inPrenom, inDateNaissance);
+	INSERT INTO Staff (nom, prenom, dateNaissance, actif)
+    VALUES (inNom, inPrenom, inDateNaissance, TRUE);
     
 END //
 
@@ -610,8 +618,8 @@ BEGIN
         WHERE debut <= inServiceDebut AND fin > inServiceDebut
 			OR debut >= inServiceDebut AND debut < inServiceFin
     ) AND inServiceDebut < inServiceFin THEN
-		INSERT INTO Service (debut, fin)
-		VALUES (inServiceDebut, inServiceFin);
+		INSERT INTO Service (debut, fin, actif)
+		VALUES (inServiceDebut, inServiceFin, TRUE);
 	END IF;
     
 END //
@@ -621,7 +629,8 @@ DELIMITER //
 CREATE PROCEDURE ServiceModifier (
 	IN inIdService INT UNSIGNED,
 	IN inNouveauDebut TIME,
-    IN inNouveauFin TIME)
+    IN inNouveauFin TIME,
+    IN inActif TINYINT)
 BEGIN
 	
     IF NOT EXISTS (
@@ -632,10 +641,22 @@ BEGIN
             AND id != idIdService
 		) AND inNouveauDebut < inNouveauFin THEN
 			UPDATE Service
-            SET debut = inNouveauDebut, fin = inNouveauFin
+            SET debut = inNouveauDebut, fin = inNouveauFin, actif = inActif
             WHERE id = inIdService;
 	END IF;
 
+END //
+
+DROP PROCEDURE IF EXISTS StaffRenvoyer;
+DELIMITER //
+CREATE PROCEDURE StaffRenvoyer (
+	IN inIdStaff INT UNSIGNED)
+BEGIN
+	
+    UPDATE Staff
+    SET actif = FALSE
+    WHERE id = inIdStaff;
+    
 END //
 
 
