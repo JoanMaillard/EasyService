@@ -50,7 +50,7 @@ AS
 		LotArticle.nombrePortions, 
         LotArticle.datePeremption 
 	FROM ArticleStock, LotArticle
-    WHERE ArticleStock.id = L.idArticleStock;
+    WHERE ArticleStock.id = LotArticle.idArticleStock;
     
 CREATE VIEW vCommande
 AS
@@ -66,12 +66,12 @@ AS
 CREATE VIEW vProduit
 AS
 	SELECT
-		Produit.nom,
-        ArticleStock.nom
+		Produit.nom AS nomProduit,
+        ArticleStock.nom AS nomArticle
 	FROM Produit
-		INNER JOIN ArtcicleStock_Produit
+		INNER JOIN ArticleStock_Produit
 			INNER JOIN ArticleStock
-            ON ArticleStock_Produit = ArticleStock
+            ON ArticleStock_Produit.idArticleStock = ArticleStock.id
 		ON Produit.id = ArticleStock_Produit.idProduit
 		
 
